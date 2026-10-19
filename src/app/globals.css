@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* 메인 캐릭터(public/images/main.png, 배경 투명) 색: 주황 고양이 + 초록 스웨터 + 갈색 선 */
+:root {
+  --background: #fff9f2;
+  --foreground: #5b2e14;
+  --primary: #e9823a;
+  --accent: #8fb339;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Tailwind v4 는 버튼 커서가 기본(default)이라 손가락 모양으로 바꾼다 */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+/* 메시지 창이 뜰 때 살짝 튀어나오는 효과 */
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.animate-pop {
+  animation: pop 0.15s ease-out;
+}
