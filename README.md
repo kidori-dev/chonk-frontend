@@ -5,6 +5,7 @@ chonk-backend 의 프론트엔드. Next.js (App Router) + TypeScript + Tailwind 
 - `/login` — 로그인 (`POST /api/auth/login`)
 - `/` — 랜딩. 마켓 카드 목록 (지금은 `src/lib/markets.ts` 의 임시 데이터)
 - `/me` — 내 정보, 포인트, 포인트 이력 (`/api/auth/me`, `/api/points`, `/api/points/history`)
+- `/games/eth-hash` — 이더리움 블록 동전 던지기 게임 (해시 마지막 글자가 홀수면 앞면, 짝수면 뒷면). 지금 블록이 N 이면 N+2 블록에 걸고, 블록이 나오고 9초 동안만 배팅할 수 있고 마지막 3초는 마감, N+1 이 나오면 확정된다. 실제 포인트를 걸 때는 판정 블록 번호를 서버가 정해야 한다. 블록 데이터는 지금 임시(`src/lib/api.ts` 의 `getRecentBlocks`, `subscribeBlocks`), 나중에 웹소켓으로 바꾼다
 
 ## 실행
 

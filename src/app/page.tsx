@@ -30,11 +30,11 @@ export default function LandingPage() {
             placeholder="마켓 검색..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg bg-foreground/5 px-4 py-2 text-sm outline-primary sm:max-w-md"
+            className="min-w-0 flex-1 rounded-md bg-foreground/5 px-4 py-2 text-sm outline-primary sm:max-w-md"
           />
           <Link
             href={loggedIn ? "/me" : "/login"}
-            className="ml-auto shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
+            className="ml-auto shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white"
           >
             {loggedIn ? "내 포인트" : "로그인"}
           </Link>
@@ -49,14 +49,15 @@ export default function LandingPage() {
             {markets.map((m) => (
               <MarketCard key={m.id} market={m} onMessage={setMessage} />
             ))}
-            {/* 마지막 칸은 메인 캐릭터. 검색 중에는 숨긴다 */}
-            {!query.trim() && <CatCell />}
           </div>
         )}
       </main>
 
+      {/* 메인 캐릭터는 창 오른쪽 아래에 항상 떠 있다 */}
+      <CornerCat />
+
       <footer className="mt-auto border-t border-foreground/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-sm text-foreground/60 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-sm text-foreground/60 sm:flex-row sm:items-center sm:justify-between sm:pr-44">
           <span className="font-bold text-foreground">Chonk</span>
           <span>© 2026 Chonk. All rights reserved.</span>
         </div>
@@ -81,14 +82,14 @@ function MessageModal({ message, onClose }: { message: string; onClose: () => vo
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="animate-pop w-full max-w-xs rounded-2xl bg-white p-6 text-center shadow-xl"
+        className="animate-pop w-full max-w-xs rounded-lg bg-white p-6 text-center shadow-xl"
       >
         <Image src="/images/main.png" alt="" width={1131} height={1237} className="mx-auto h-24 w-auto brightness-110" />
         <p className="mt-4 text-lg font-bold whitespace-pre-line">{message}</p>
         <button
           autoFocus
           onClick={onClose}
-          className="mt-6 w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white hover:opacity-90"
+          className="mt-6 w-full rounded-md bg-primary py-2.5 text-sm font-medium text-white hover:opacity-90"
         >
           확인
         </button>
@@ -97,11 +98,15 @@ function MessageModal({ message, onClose }: { message: string; onClose: () => vo
   );
 }
 
-function CatCell() {
+function CornerCat() {
   return (
-    <div className="flex min-h-48 items-center justify-center">
-      <Image src="/images/main.png" alt="Chonk" width={1131} height={1237} className="h-40 w-auto brightness-110" />
-    </div>
+    <Image
+      src="/images/main.png"
+      alt="Chonk"
+      width={1131}
+      height={1237}
+      className="pointer-events-none fixed right-3 bottom-3 z-10 h-24 w-auto brightness-110 sm:right-6 sm:bottom-4 sm:h-36"
+    />
   );
 }
 
@@ -145,7 +150,7 @@ function MarketCard({ market: m, onMessage }: { market: Market; onMessage: (mess
   const isNew = "isNew" in m && m.isNew;
 
   return (
-    <article className="flex min-h-48 flex-col rounded-xl border border-foreground/10 bg-white p-4 shadow-sm transition hover:shadow-md">
+    <article className="flex min-h-48 flex-col rounded-lg border border-foreground/10 bg-white p-4 shadow-sm transition hover:shadow-md">
       {m.kind === "match" ? (
         <div className="space-y-3">
           {m.teams.map((t) => (
@@ -174,9 +179,12 @@ function MarketCard({ market: m, onMessage }: { market: Market; onMessage: (mess
 
       <div className="mt-auto pt-4">
         {m.kind === "game" ? (
-          <button className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white hover:opacity-90">
+          <Link
+            href={m.href}
+            className="block w-full rounded-md bg-primary py-2.5 text-center text-sm font-medium text-white hover:opacity-90"
+          >
             입장하기
-          </button>
+          </Link>
         ) : m.kind === "multi" ? (
           <ul className="space-y-2">
             {m.options.map((o) => (
@@ -197,7 +205,7 @@ function MarketCard({ market: m, onMessage }: { market: Market; onMessage: (mess
               m.teams.map((t) => (
                 <button
                   key={t.short}
-                  className="truncate rounded-lg py-2.5 text-sm font-medium hover:opacity-80"
+                  className="truncate rounded-md py-2.5 text-sm font-medium hover:opacity-80"
                   style={{ backgroundColor: `${t.color}1a`, color: t.color }}
                 >
                   {t.name}
@@ -207,13 +215,13 @@ function MarketCard({ market: m, onMessage }: { market: Market; onMessage: (mess
               <>
                 <button
                   onClick={() => m.alerts && onMessage(m.alerts[0])}
-                  className="rounded-lg bg-accent/15 py-2.5 text-sm font-medium text-accent hover:bg-accent/25"
+                  className="rounded-md bg-accent/15 py-2.5 text-sm font-medium text-accent hover:bg-accent/25"
                 >
                   {m.sides[0]}
                 </button>
                 <button
                   onClick={() => m.alerts && onMessage(m.alerts[1])}
-                  className="rounded-lg bg-red-500/10 py-2.5 text-sm font-medium text-red-500 hover:bg-red-500/20"
+                  className="rounded-md bg-red-500/10 py-2.5 text-sm font-medium text-red-500 hover:bg-red-500/20"
                 >
                   {m.sides[1]}
                 </button>

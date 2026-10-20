@@ -42,8 +42,29 @@ function saveTokens(tokens: Tokens | null): void {
   else localStorage.removeItem(TOKENS_KEY);
 }
 
+// ---- 데모 로그인 ----
+// 백엔드 없이 둘러볼 수 있게 "demo" 유저로 로그인한 것처럼 보이게 한다. 실제 API 는 부르지 않는다
+const DEMO_KEY = "chonk.demo";
+const DEMO_USER: User = { id: "demo", email: "demo@chonk", name: "demo" };
+const DEMO_POINTS = "10000";
+
+function isDemo(): boolean {
+  try {
+    return localStorage.getItem(DEMO_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function loginDemo(): User {
+  saveTokens(null);
+  localStorage.setItem(DEMO_KEY, "1");
+  return DEMO_USER;
+}
+
+/** 로그인 상태인지 (데모 포함) */
 export function hasTokens(): boolean {
-  return loadTokens() !== null;
+  return isDemo() || loadTokens() !== null;
 }
 
 async function request<T>(path: string, init: RequestInit = {}, accessToken?: string): Promise<T> {
@@ -100,11 +121,13 @@ export async function login(email: string, password: string): Promise<User> {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+  localStorage.removeItem(DEMO_KEY);
   saveTokens(res);
   return res.user;
 }
 
 export async function logout(): Promise<void> {
+  localStorage.removeItem(DEMO_KEY);
   const tokens = loadTokens();
   saveTokens(null);
   if (tokens) {
@@ -115,9 +138,41 @@ export async function logout(): Promise<void> {
   }
 }
 
-export const getMe = () => authRequest<User>("/auth/me");
+export const getMe = () => (isDemo() ? Promise.resolve(DEMO_USER) : authRequest<User>("/auth/me"));
 
-export const getPoints = () => authRequest<{ points: string }>("/points");
+export const getPoints = () =>
+  isDemo() ? Promise.resolve({ points: DEMO_POINTS }) : authRequest<{ points: string }>("/points");
 
 export const getPointHistory = (limit: number, offset: number) =>
-  authRequest<{ items: PointHistoryItem[] }>(`/points/history?limit=${limit}&offset=${offset}`);
+  isDemo()
+    ? Promise.resolve({ items: [] as PointHistoryItem[] })
+    : authRequest<{ items: PointHistoryItem[] }>(`/points/history?limit=${limit}&offset=${offset}`);
+
+// ---- 이더리움 블록 (동전 던지기 게임) ----
+// 지금은 임시 데이터. 백엔드가 준비되면 getRecentBlocks 는 REST, subscribeBlocks 는 웹소켓으로 바꾼다
+
+export type Block = { number: number; hash: string; timestamp: number };
+
+/** 이더리움 블록 생성 간격(약 12초) */
+export const BLOCK_INTERVAL_MS = 12_000;
+
+let mockNumber = 21_034_560;
+
+function mockBlock(timestamp: number): Block {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const hash = "0x" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return { number: ++mockNumber, hash, timestamp };
+}
+
+/** 최근 블록 목록 (최신이 앞) */
+export async function getRecentBlocks(limit: number): Promise<Block[]> {
+  const now = Date.now();
+  const blocks = Array.from({ length: limit }, (_, i) => mockBlock(now - (limit - 1 - i) * BLOCK_INTERVAL_MS));
+  return blocks.reverse();
+}
+
+/** 새 블록이 생기면 onBlock 을 부른다. 반환값을 부르면 구독 해제 */
+export function subscribeBlocks(onBlock: (block: Block) => void): () => void {
+  const timer = setInterval(() => onBlock(mockBlock(Date.now())), BLOCK_INTERVAL_MS);
+  return () => clearInterval(timer);
+}

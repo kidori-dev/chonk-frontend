@@ -42,6 +42,8 @@ type GameMarket = {
   id: string;
   title: string;
   description: string;
+  /** 입장하기 버튼이 가는 게임 페이지 */
+  href: string;
   live?: boolean;
   isNew?: boolean;
 };
@@ -54,8 +56,9 @@ export const MARKETS: Market[] = [
   {
     kind: "game",
     id: "1",
-    title: "이더리움 새 블록 해시값 맞추기",
-    description: "새로 생성될 이더리움 블록의 해시값을 맞혀보세요",
+    title: "이더리움 블록 동전 던지기",
+    description: "새 블록 해시로 던지는 동전, 앞면일까 뒷면일까?",
+    href: "/games/eth-hash",
     live: true,
   },
   {

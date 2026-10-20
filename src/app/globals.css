@@ -6,6 +6,8 @@
   --foreground: #5b2e14;
   --primary: #e9823a;
   --accent: #8fb339;
+  /* 이더리움 보라색. 홀(주황)/짝(초록)과 상관없는 게임 진행 표시용 */
+  --eth: #627eea;
 }
 
 @theme inline {
@@ -13,14 +15,15 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
+  --color-eth: var(--eth);
+  --font-sans: var(--font-noto-sans-kr);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-noto-sans-kr), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 }
 
 /* Tailwind v4 는 버튼 커서가 기본(default)이라 손가락 모양으로 바꾼다 */
@@ -38,4 +41,114 @@ button:not(:disabled) {
 
 .animate-pop {
   animation: pop 0.15s ease-out;
+}
+
+/* ---- 이더리움 블록 동전 던지기 게임 ---- */
+
+/* 새 블록이 들어오면 블록 줄이 한 칸(64px + 간격 8px) 오른쪽으로 밀린다 */
+@keyframes chain {
+  from {
+    transform: translateX(-72px);
+  }
+}
+
+.animate-chain {
+  animation: chain 0.5s ease-out;
+}
+
+/* 동전 던지기 (전체 2.2초)
+   toss: 위로 튀었다가 떨어져서 살짝 통통 튄다
+   spin: 처음엔 빠르게 돌다가 점점 느려지며 --coin-end 각도(앞면 2160deg, 뒷면 2340deg)에서 멈춘다
+   shadow: 동전이 높이 뜰수록 바닥 그림자가 작고 흐려진다 */
+@keyframes coin-toss {
+  0% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  40% {
+    transform: translateY(-70px);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4);
+  }
+  80% {
+    transform: translateY(0);
+  }
+  88% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes coin-spin {
+  from {
+    transform: rotateX(18deg) rotateY(0);
+  }
+  80% {
+    transform: rotateX(8deg) rotateY(var(--coin-end));
+  }
+  to {
+    transform: rotateX(0) rotateY(var(--coin-end));
+  }
+}
+
+@keyframes coin-shadow {
+  0%,
+  80%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 0.4;
+    transform: scale(0.55);
+  }
+}
+
+@keyframes coin-shine {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+.animate-coin-toss {
+  animation: coin-toss 2.2s both;
+}
+
+.animate-coin-spin {
+  transform-style: preserve-3d;
+  animation: coin-spin 2.2s cubic-bezier(0.15, 0.6, 0.3, 1) both;
+}
+
+.animate-coin-shadow {
+  animation: coin-shadow 2.2s ease-in-out both;
+}
+
+.animate-coin-shine {
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.7) 50%, transparent 65%) no-repeat;
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  animation: coin-shine 0.9s ease-in-out 2.2s both;
+}
+
+/* 다음 블록 진행 막대: 사선 줄무늬가 오른쪽으로 흘러간다 */
+@keyframes stripes {
+  to {
+    background-position: 20px 0;
+  }
+}
+
+.progress-stripes {
+  background-image: linear-gradient(
+    45deg,
+    rgb(255 255 255 / 0.25) 25%,
+    transparent 25% 50%,
+    rgb(255 255 255 / 0.25) 50% 75%,
+    transparent 75%
+  );
+  background-size: 20px 20px;
+  animation: stripes 0.8s linear infinite;
 }

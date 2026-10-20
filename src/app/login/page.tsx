@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { ApiError, login } from "@/lib/api";
+import { ApiError, login, loginDemo } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -68,6 +68,17 @@ export default function LoginPage() {
           className="w-full rounded-md bg-primary py-2 font-medium text-white disabled:opacity-50"
         >
           {loading ? "로그인 중..." : "로그인"}
+        </button>
+        {/* 백엔드 없이 둘러보기용 */}
+        <button
+          type="button"
+          onClick={() => {
+            loginDemo();
+            router.replace("/");
+          }}
+          className="w-full rounded-md border border-primary/40 py-2 font-medium text-primary hover:bg-primary/5"
+        >
+          demo 로그인
         </button>
       </form>
     </main>

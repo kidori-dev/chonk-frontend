@@ -79,7 +79,7 @@ export default function HomePage() {
         </button>
       </header>
 
-      <section className="flex items-center justify-between gap-4 rounded-lg border border-accent/40 p-6">
+      <section className="flex items-center justify-between gap-4 rounded-md border border-accent/40 p-6">
         <div>
           <p className="text-sm text-foreground/60">내 포인트</p>
           <p className="mt-1 text-4xl font-bold tabular-nums text-primary">{points ?? "-"}</p>
@@ -100,7 +100,7 @@ export default function HomePage() {
         {history.length === 0 ? (
           <p className="text-sm text-foreground/60">아직 이력이 없습니다</p>
         ) : (
-          <ul className="divide-y divide-foreground/10 rounded-lg border border-foreground/15">
+          <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/15">
             {history.map((h, i) => (
               <li key={`${h.type}-${h.targetId ?? i}`} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="min-w-0">
