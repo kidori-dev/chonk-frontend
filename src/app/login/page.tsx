@@ -32,12 +32,12 @@ export default function LoginPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-4">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
-        {/* 메인 캐릭터 */}
+        {/* 심술냥이 */}
         <Image
-          src="/images/main.png"
+          src="/images/cat-grumpy.png"
           alt="Chonk"
-          width={1131}
-          height={1237}
+          width={512}
+          height={539}
           priority
           className="mx-auto h-auto w-40"
         />

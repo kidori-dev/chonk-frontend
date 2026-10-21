@@ -36,10 +36,11 @@ type MatchMarket = {
   live?: boolean;
 };
 
-/** 게임 입장 카드 (아이콘은 이더리움 로고 고정) */
+/** 게임 입장 카드. icon 이 "eth" 면 이더리움 코인, "churu" 면 츄르 그림, "cat" 이면 고양이 얼굴, "mouse" 면 쥐 얼굴 */
 type GameMarket = {
   kind: "game";
   id: string;
+  icon: string;
   title: string;
   description: string;
   /** 입장하기 버튼이 가는 게임 페이지 */
@@ -50,35 +51,72 @@ type GameMarket = {
 
 type Team = { name: string; short: string; color: string };
 
-export type Market = MultiMarket | BinaryMarket | MatchMarket | GameMarket;
+/** 버튼 하나로 무언가를 사 주는 카드. 누르면 가격을 묻고, 확인하면 thanks 를 보여준다 */
+type BuyMarket = {
+  kind: "buy";
+  id: string;
+  icon: string;
+  title: string;
+  button: string;
+  price: number;
+  thanks: string;
+  isNew?: boolean;
+};
+
+/** 준비 중인 게임 자리 (? 와 Coming soon 만 보여준다) */
+type SoonMarket = { kind: "soon"; id: string; title: string };
+
+export type Market = MultiMarket | BinaryMarket | MatchMarket | GameMarket | BuyMarket | SoonMarket;
 
 export const MARKETS: Market[] = [
   {
     kind: "game",
     id: "1",
+    icon: "eth",
     title: "이더리움 블록 동전 던지기",
     description: "새 블록 해시로 던지는 동전, 앞면일까 뒷면일까?",
     href: "/games/eth-hash",
     live: true,
   },
   {
-    kind: "binary",
-    id: "12",
-    icon: "🐱",
-    title: "Chonk 고양이 이번 주 몸무게 늘까?",
-    sides: ["늘어요", "그대로"],
-    alerts: ["ㅋㅋㅋ", "땡! 틀렸습니다. Chonk 는 오늘도 츄르를 먹었어요 🐟"],
-    volume: "N",
-    isNew: true
+    kind: "game",
+    id: "3",
+    icon: "cat",
+    title: "이더리움 블록 고양이 경주",
+    description: "블록 해시로 달리는 고양이 4마리, 1등은 누구?",
+    href: "/games/cat-race",
+    live: true,
+    isNew: true,
   },
   {
-    kind: "binary",
+    kind: "game",
+    id: "4",
+    icon: "mouse",
+    title: "이더리움 블록 그림 맞추기",
+    description: "블록 해시 마지막 3글자가 그림이 돼요. 츄르 3개면 12배!",
+    href: "/games/block-match",
+    live: true,
+    isNew: true,
+  },
+  {
+    kind: "game",
+    id: "2",
+    icon: "churu",
+    title: "랜덤 츄르 그림 맞추기",
+    description: "츄르 세 개가 나란히 나오면 잭팟!",
+    href: "/games/churu-match",
+    isNew: true,
+  },
+
+  {
+    kind: "buy",
     id: "13",
     icon: "churu",
     title: "Chonk 고양이한테 츄르 주기",
-    sides: ["사줄게요", "다음에요"],
-    alerts: ["냥! 고마워요 😻 Chonk 가 츄르를 맛있게 먹었어요", "😾 Chonk 가 삐졌습니다..."],
-    volume: "N",
+    button: "사줄게요",
+    price: 10,
+    thanks: "냥! 고마워요 😻 Chonk 가 츄르를 맛있게 먹었어요",
     isNew: true
   },
+  { kind: "soon", id: "soon-1", title: "새 게임 준비 중" },
 ];

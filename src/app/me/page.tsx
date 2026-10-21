@@ -84,12 +84,12 @@ export default function HomePage() {
           <p className="text-sm text-foreground/60">내 포인트</p>
           <p className="mt-1 text-4xl font-bold tabular-nums text-primary">{points ?? "-"}</p>
         </div>
-        {/* 메인 캐릭터 */}
+        {/* 웃는 고양이 */}
         <Image
-          src="/images/main.png"
+          src="/images/cat-happy.png"
           alt="Chonk"
-          width={1131}
-          height={1237}
+          width={512}
+          height={539}
           className="h-auto w-28 shrink-0"
         />
       </section>
