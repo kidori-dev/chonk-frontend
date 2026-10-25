@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
+import AccountMenu from "@/components/AccountMenu";
 import BetAmountPicker from "@/components/BetAmountPicker";
+import BetButton from "@/components/BetButton";
 import SymbolArt, { type MatchSymbol } from "@/components/MatchSymbols";
 import WalletCard from "@/components/WalletCard";
-import { BLOCK_INTERVAL_MS, getRecentBlocks, subscribeBlocks, type Block } from "@/lib/api";
-import { BET_AHEAD, BET_AMOUNTS, BET_OPEN_MS, MY_BETS_SHOWN, MY_BETS_SIZE } from "@/lib/betting";
+import type { Block } from "@/lib/api";
+import { BET_AHEAD, MY_BETS_SHOWN, blockUrl } from "@/lib/betting";
+import { profitOf, useBlockBetting, type BetRow } from "@/lib/useBlockBetting";
 
 // 이더리움 블록 그림 맞추기. 블록 해시 마지막 3글자가 릴 3개의 그림이 된다
 // 0~3 츄르, 4~7 생선, 8~b 고양이, c~f 쥐. 해시만 있으면 누구나 결과를 다시 계산할 수 있다
@@ -15,7 +18,6 @@ import { BET_AHEAD, BET_AMOUNTS, BET_OPEN_MS, MY_BETS_SHOWN, MY_BETS_SIZE } from
 const REEL_SYMBOLS: MatchSymbol[] = ["churu", "fish", "cat", "mouse"];
 const SYMBOL_NAME: Record<string, string> = { churu: "츄르", fish: "생선", cat: "고양이", mouse: "쥐" };
 
-const HISTORY_SIZE = 12;
 /** 릴이 왼쪽부터 차례로 멈추는 시각(ms). 마지막 릴이 멈추면 결과를 보여준다 */
 const STOP_AT = [900, 1400, 1900];
 const REVEAL_MS = STOP_AT[STOP_AT.length - 1];
@@ -44,74 +46,17 @@ function spinOf(hash: string): Spin {
   return { chars, symbols, times: hit?.times ?? 0, label: hit?.label ?? "꽝" };
 }
 
-type LockedBet = { amount: number; target: number };
-type Result = { blockNumber: number; amount: number; spin: Spin };
-
 export default function BlockMatchPage() {
-  const [blocks, setBlocks] = useState<Block[]>([]); // 최신이 앞
-  const [joined, setJoined] = useState(false); // 이번 라운드 참여 여부
-  const [auto, setAuto] = useState(false); // 매 라운드 자동 참여
-  const [amount, setAmount] = useState(BET_AMOUNTS[0]);
-  const [locked, setLocked] = useState<LockedBet | null>(null);
-  // 내 배팅 기록(최신이 앞). 백엔드 배팅 API 가 생기기 전까지는 이 화면에 있는 동안만 쌓인다
-  const [results, setResults] = useState<Result[]>([]);
-  const [now, setNow] = useState(0);
-  // 새 블록 콜백에서 최신 값을 읽기 위한 ref
-  const joinedRef = useRef(false);
-  const autoRef = useRef(false);
-  const amountRef = useRef(BET_AMOUNTS[0]);
-  const lockedRef = useRef<LockedBet | null>(null);
-
-  function join(next: boolean) {
-    joinedRef.current = next;
-    setJoined(next);
-  }
+  const g = useBlockBetting({ game: "block-match", picks: null, revealMs: REVEAL_MS });
+  const { latest, history, betClosed, betRemain, blockRemain, amount } = g;
+  // 매 라운드 자동 참여 (= 같은 금액으로 자동 배팅)
+  const auto = g.mode === "fixed";
 
   function toggleAuto() {
-    const next = !autoRef.current;
-    autoRef.current = next;
-    setAuto(next);
-    // 자동 참여를 켜면 이번 라운드도 바로 참여 (배팅 마감 중이면 다음 라운드부터)
-    if (next && !betClosed) join(true);
+    g.changeMode(auto ? "manual" : "fixed");
+    // 자동 참여를 켜면 이번 라운드도 바로 참여 (이미 걸었거나 마감이면 다음 라운드부터)
+    if (!auto && !g.placedNow && !betClosed && g.loggedIn) void g.place(null, true);
   }
-
-  useEffect(() => {
-    let cancelled = false;
-    getRecentBlocks(HISTORY_SIZE).then((b) => !cancelled && setBlocks(b));
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    const unsubscribe = subscribeBlocks((block) => {
-      setBlocks((prev) => [block, ...prev].slice(0, HISTORY_SIZE));
-
-      // 1) 마감된 배팅의 판정 블록이면, 릴이 다 멈춘 뒤 결과를 낸다
-      const bet = lockedRef.current;
-      if (bet && bet.target === block.number) {
-        const r = { blockNumber: block.number, amount: bet.amount, spin: spinOf(block.hash) };
-        timers.push(setTimeout(() => setResults((prev) => [r, ...prev].slice(0, MY_BETS_SIZE)), REVEAL_MS));
-      }
-
-      // 2) 이번 라운드 참여를 마감하고 3) 자동 참여면 다음 라운드도 참여
-      const next = joinedRef.current ? { amount: amountRef.current, target: block.number + 1 } : null;
-      lockedRef.current = next;
-      setLocked(next);
-      join(autoRef.current);
-    });
-
-    const tick = setInterval(() => setNow(Date.now()), 200);
-    return () => {
-      cancelled = true;
-      unsubscribe();
-      clearInterval(tick);
-      timers.forEach(clearTimeout);
-    };
-  }, []);
-
-  const latest = blocks[0];
-  const previous = blocks.slice(1);
-  const elapsed = latest && now ? Math.max(0, now - latest.timestamp) : 0;
-  const betClosed = !latest || elapsed >= BET_OPEN_MS;
-  const betRemain = Math.max(0, Math.ceil((BET_OPEN_MS - elapsed) / 1000));
-  const blockRemain = Math.max(0, Math.ceil((BLOCK_INTERVAL_MS - elapsed) / 1000));
 
   return (
     <div className="flex flex-1 flex-col">
@@ -128,6 +73,7 @@ export default function BlockMatchPage() {
             </span>
             LIVE
           </span>
+          <AccountMenu />
         </div>
       </header>
 
@@ -172,22 +118,18 @@ export default function BlockMatchPage() {
               amount={amount}
               times={PAYOUTS[0].times}
               timesLabel="최대"
-              disabled={betClosed}
-              onChange={(a) => {
-                amountRef.current = a;
-                setAmount(a);
-              }}
+              disabled={betClosed || g.placedNow !== null}
+              onChange={g.setAmount}
             />
 
-            <button
-              onClick={() => join(!joined)} // 한 번 더 누르면 취소
+            <BetButton
+              loggedIn={g.loggedIn}
+              amount={amount}
+              placed={g.placedNow}
+              placing={g.placing}
               disabled={betClosed}
-              className={`mt-3 w-full rounded-md py-3 text-base font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
-                joined ? "bg-primary text-white shadow-md" : "bg-primary/10 text-primary hover:bg-primary/20"
-              }`}
-            >
-              {joined ? `✓ ${amount} 코인 참여 중 (누르면 취소)` : `${amount} 코인으로 참여하기`}
-            </button>
+              onClick={() => g.place(null)}
+            />
             <button
               onClick={toggleAuto}
               className={`mt-2 w-full rounded-md py-2 text-xs font-semibold transition ${
@@ -198,11 +140,13 @@ export default function BlockMatchPage() {
             </button>
 
             <p className="mt-3 text-center text-sm text-foreground/60">
-              {betClosed && latest ? (
+              {g.message ? (
+                <b className="text-red-500">{g.message}</b>
+              ) : betClosed && latest ? (
                 <>
                   배팅 마감! 다음 블록이 나오면 <b className="text-eth">#{(latest.number + BET_AHEAD + 1).toLocaleString()}</b> 배팅이 열려요
                 </>
-              ) : joined ? (
+              ) : g.placedNow ? (
                 "참여 완료! 블록이 나오면 릴이 돌아가요"
               ) : (
                 "금액을 고르고 참여해 주세요"
@@ -210,7 +154,7 @@ export default function BlockMatchPage() {
             </p>
           </section>
 
-          <MyBets bets={results} locked={locked} />
+          <MyBets rows={g.rows} refreshKey={g.pointsVersion} />
         </aside>
 
         {/* 배당표 + 지난 블록 */}
@@ -236,14 +180,15 @@ export default function BlockMatchPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-semibold">지난 블록</h2>
+            <h2 className="font-semibold">지난 라운드</h2>
+            <p className="text-xs text-foreground/50">판정 블록 뒤로 2블록이 더 나오면 결과가 확정돼요</p>
             <ul className="divide-y divide-foreground/10 rounded-lg border border-foreground/10 bg-white">
-              {previous.map((b) => {
+              {history.map((b) => {
                 const spin = spinOf(b.hash);
                 return (
                   <li key={b.hash} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                     <a
-                      href={`https://etherscan.io/block/${b.number}`}
+                      href={blockUrl(b.number)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-24 shrink-0 text-xs tabular-nums text-blue-600 hover:underline"
@@ -272,51 +217,44 @@ export default function BlockMatchPage() {
   );
 }
 
-/** 얻거나 잃은 코인 (+150 / -50 / 0) */
-function profitOf(r: Result): number {
-  return Math.round(r.amount * r.spin.times) - r.amount;
-}
-
-/** 내 자산 카드 안의 배팅 기록 줄들 */
-function MyBets({ bets, locked }: { bets: Result[]; locked: LockedBet | null }) {
+/** 내 자산 카드 안의 배팅 기록 줄들 (서버 배팅 기록) */
+function MyBets({ rows, refreshKey }: { rows: BetRow[]; refreshKey: number }) {
   return (
-    <WalletCard empty={!locked && bets.length === 0}>
-      {locked && (
-        <li
-          key={`locked-${locked.target}`}
-          className="animate-pop flex items-center gap-2 rounded-lg bg-eth/10 px-3 py-2 text-sm text-eth"
-        >
-          <span className="w-24 shrink-0 text-xs font-semibold tabular-nums">🔒 #{locked.target.toLocaleString()}</span>
-          <span className="text-xs font-bold tabular-nums">{locked.amount} 코인</span>
-          <span className="ml-auto animate-pulse text-xs font-semibold">결과 기다리는 중</span>
-        </li>
-      )}
-      {bets.slice(0, locked ? MY_BETS_SHOWN - 1 : MY_BETS_SHOWN).map((r) => {
-        const profit = profitOf(r);
+    <WalletCard empty={rows.length === 0} refreshKey={refreshKey}>
+      {rows.slice(0, MY_BETS_SHOWN).map((row) => {
+        const { bet } = row;
+        if (!row.revealed || !row.hash) {
+          return (
+            <li key={bet.id} className="animate-pop flex items-center gap-2 rounded-lg bg-eth/10 px-3 py-2 text-sm text-eth">
+              <span className="w-24 shrink-0 text-xs font-semibold tabular-nums">🔒 #{bet.targetBlockNumber?.toLocaleString()}</span>
+              <span className="text-xs font-bold tabular-nums">{Number(bet.amount).toLocaleString()} 코인</span>
+              <span className="ml-auto animate-pulse text-xs font-semibold">결과 기다리는 중</span>
+            </li>
+          );
+        }
+        const spin = spinOf(row.hash);
+        const profit = profitOf(row, spin.times);
         return (
           <li
-            key={r.blockNumber}
-            className={`animate-pop flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-              profit > 0 ? "bg-sky-50" : "bg-foreground/[0.03]"
-            }`}
+            key={bet.id}
+            className={`animate-pop flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${profit > 0 ? "bg-sky-50" : "bg-foreground/[0.03]"}`}
           >
             <a
-              href={`https://etherscan.io/block/${r.blockNumber}`}
+              href={blockUrl(bet.targetBlockNumber!)}
               target="_blank"
               rel="noopener noreferrer"
               className="w-24 shrink-0 text-xs tabular-nums text-blue-600 hover:underline"
             >
-              #{r.blockNumber.toLocaleString()}
+              #{bet.targetBlockNumber!.toLocaleString()}
             </a>
             <span className="flex gap-0.5">
-              {r.spin.symbols.map((s, i) => (
+              {spin.symbols.map((s, i) => (
                 <SymbolArt key={i} symbol={s} className="h-5 w-5" />
               ))}
             </span>
-            <span
-              className={`ml-auto text-xs font-bold tabular-nums ${profit > 0 ? "text-sky-600" : "text-foreground/50"}`}
-            >
-              {profit > 0 ? `🎉 +${profit}` : profit === 0 ? "본전" : `😿 ${profit}`} 코인
+            <span className={`ml-auto text-xs font-bold tabular-nums ${profit > 0 ? "text-sky-600" : "text-foreground/50"}`}>
+              {profit > 0 ? `🎉 +${profit.toLocaleString()}` : profit === 0 ? "본전" : `😿 ${profit.toLocaleString()}`} 코인
+              {!row.settled && <span className="ml-1 font-medium text-foreground/40">정산 중</span>}
             </span>
           </li>
         );

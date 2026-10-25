@@ -2,6 +2,7 @@
 
 /* 메인 캐릭터(public/images/main.png, 배경 투명) 색: 주황 고양이 + 초록 스웨터 + 갈색 선 */
 :root {
+  /*--background: #ffffff;*/
   --background: #fff9f2;
   --foreground: #5b2e14;
   --primary: #e9823a;

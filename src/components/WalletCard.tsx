@@ -10,9 +10,17 @@ const subscribeNothing = () => () => {};
 
 /**
  * 내 자산과 배팅 기록. 로그인했을 때만 보여준다.
- * 배팅 기록 줄(li)은 게임마다 모양이 달라서 children 으로 받는다
+ * 배팅 기록 줄(li)은 게임마다 모양이 달라서 children 으로 받는다. refreshKey 가 바뀌면 포인트를 다시 불러온다
  */
-export default function WalletCard({ empty, children }: { empty: boolean; children: React.ReactNode }) {
+export default function WalletCard({
+  empty,
+  refreshKey = 0,
+  children,
+}: {
+  empty: boolean;
+  refreshKey?: number;
+  children: React.ReactNode;
+}) {
   const loggedIn = useSyncExternalStore(subscribeNothing, hasTokens, () => false);
   const [points, setPoints] = useState<string | null>(null);
 
@@ -21,7 +29,7 @@ export default function WalletCard({ empty, children }: { empty: boolean; childr
     getPoints()
       .then((p) => setPoints(p.points))
       .catch(() => setPoints(null));
-  }, [loggedIn]);
+  }, [loggedIn, refreshKey]);
 
   return (
     <section className="rounded-xl border border-foreground/10 bg-white p-5 shadow-sm">

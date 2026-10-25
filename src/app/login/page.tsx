@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -69,6 +70,12 @@ export default function LoginPage() {
         >
           {loading ? "로그인 중..." : "로그인"}
         </button>
+        <p className="text-center text-sm text-foreground/60">
+          처음이신가요?{" "}
+          <Link href="/signup" className="font-medium text-primary hover:underline">
+            회원가입
+          </Link>
+        </p>
         {/* 백엔드 없이 둘러보기용 */}
         <button
           type="button"

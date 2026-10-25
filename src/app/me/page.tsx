@@ -12,13 +12,28 @@ import {
   getPoints,
   hasTokens,
   logout,
+  type GameId,
   type PointHistoryItem,
   type User,
 } from "@/lib/api";
 
 const PAGE_SIZE = 20;
 
-const TYPE_LABEL: Record<PointHistoryItem["type"], string> = { deposit: "입금", withdraw: "출금" };
+const TYPE_LABEL: Record<PointHistoryItem["type"], string> = {
+  deposit: "입금",
+  withdraw: "출금",
+  bet: "배팅",
+  bet_payout: "당첨",
+  churu: "츄르",
+};
+
+const GAME_LABEL: Record<GameId, string> = {
+  coin: "동전 던지기",
+  "cat-race": "고양이 경주",
+  "block-match": "블록 그림 맞추기",
+  dice: "주사위",
+  "churu-match": "츄르 그림 맞추기",
+};
 
 export default function HomePage() {
   const router = useRouter();
@@ -74,9 +89,14 @@ export default function HomePage() {
           <h1 className="text-xl font-bold">{user.name ?? user.email}</h1>
           <p className="text-sm text-foreground/60">{user.email}</p>
         </div>
-        <button onClick={onLogout} className="rounded-md border border-foreground/20 px-3 py-1.5 text-sm">
-          로그아웃
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/deposit" className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white">
+            입금하기
+          </Link>
+          <button onClick={onLogout} className="rounded-md border border-foreground/20 px-3 py-1.5 text-sm">
+            로그아웃
+          </button>
+        </div>
       </header>
 
       <section className="flex items-center justify-between gap-4 rounded-md border border-accent/40 p-6">
@@ -106,6 +126,7 @@ export default function HomePage() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium">
                     {TYPE_LABEL[h.type] ?? h.type}
+                    {h.game && <span className="ml-2 text-foreground/60">{GAME_LABEL[h.game] ?? h.game}</span>}
                     {h.symbol && (
                       <span className="ml-2 text-foreground/60">
                         {h.tokenAmount} {h.symbol}

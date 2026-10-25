@@ -5,7 +5,7 @@ export type User = { id: string; email: string; name: string | null };
 type Tokens = { accessToken: string; refreshToken: string };
 
 export type PointHistoryItem = {
-  type: "deposit" | "withdraw";
+  type: "deposit" | "withdraw" | "bet" | "bet_payout" | "churu";
   points: string;
   pointsBefore: string;
   pointsAfter: string;
@@ -13,6 +13,8 @@ export type PointHistoryItem = {
   symbol: string | null;
   tokenAmount: string | null;
   txHash: string | null;
+  /** 배팅 이력(bet / bet_payout)의 게임 */
+  game: GameId | null;
   createdAt: string;
 };
 
@@ -126,6 +128,17 @@ export async function login(email: string, password: string): Promise<User> {
   return res.user;
 }
 
+/** 회원가입. 성공하면 바로 로그인된다 */
+export async function register(email: string, password: string, name?: string): Promise<User> {
+  const res = await request<Tokens & { user: User }>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password, ...(name ? { name } : {}) }),
+  });
+  localStorage.removeItem(DEMO_KEY);
+  saveTokens(res);
+  return res.user;
+}
+
 export async function logout(): Promise<void> {
   localStorage.removeItem(DEMO_KEY);
   const tokens = loadTokens();
@@ -143,36 +156,85 @@ export const getMe = () => (isDemo() ? Promise.resolve(DEMO_USER) : authRequest<
 export const getPoints = () =>
   isDemo() ? Promise.resolve({ points: DEMO_POINTS }) : authRequest<{ points: string }>("/points");
 
+/** Chonk 고양이에게 츄르 주기. 서버가 포인트를 빼고(10 P) 반영 후 포인트를 돌려준다. 포인트가 모자라면 400 */
+export function feedChuru(): Promise<{ points: string }> {
+  if (isDemo()) return Promise.reject(new ApiError(403, "데모 계정은 츄르를 사 줄 수 없어요. 로그인해 주세요"));
+  return authRequest("/points/churu", { method: "POST" });
+}
+
 export const getPointHistory = (limit: number, offset: number) =>
   isDemo()
     ? Promise.resolve({ items: [] as PointHistoryItem[] })
     : authRequest<{ items: PointHistoryItem[] }>(`/points/history?limit=${limit}&offset=${offset}`);
 
-// ---- 이더리움 블록 (동전 던지기 게임) ----
-// 지금은 임시 데이터. 백엔드가 준비되면 getRecentBlocks 는 REST, subscribeBlocks 는 웹소켓으로 바꾼다
+// ---- 이더리움 블록 (블록 게임) ----
+// 블록과 라운드 결과는 소켓(src/lib/socket.ts)으로 받는다
 
 export type Block = { number: number; hash: string; timestamp: number };
 
 /** 이더리움 블록 생성 간격(약 12초) */
 export const BLOCK_INTERVAL_MS = 12_000;
 
-let mockNumber = 21_034_560;
+/** 블록 게임 라운드 결과 (판정 블록 뒤로 2블록이 더 나와 확정된 것) */
+export type Round = {
+  blockNumber: number;
+  blockHash: string;
+  /** 예) coin "f", cat-race "orange", block-match "churu,fish,cat", dice "3,4" */
+  result: string;
+  createdAt: string;
+};
 
-function mockBlock(timestamp: number): Block {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  const hash = "0x" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  return { number: ++mockNumber, hash, timestamp };
+// ---- 게임 배팅 ----
+
+export type GameId = "coin" | "cat-race" | "block-match" | "dice" | "churu-match";
+
+/** 배팅 1건. status 가 pending 이면 결과 대기, settled 면 payout 까지 반영됨 */
+export type Bet = {
+  id: string;
+  game: GameId;
+  /** 판정 블록 번호 (churu-match 는 null) */
+  targetBlockNumber: number | null;
+  pick: string | null;
+  amount: string;
+  status: "pending" | "settled";
+  blockHash: string | null;
+  /** 결과 값. 예) coin "f", cat-race "orange", 그림 맞추기 "churu,fish,cat", dice "3,4" */
+  result: string | null;
+  multiplier: string | null;
+  payout: string | null;
+  createdAt: string;
+  settledAt: string | null;
+};
+
+/**
+ * 배팅. 블록 게임은 targetBlockNumber(최신 블록 + 2)에 건다.
+ * churu-match 는 바로 결과가 나온다 (status = settled). points = 반영 후 내 포인트
+ */
+export function placeBet(
+  game: GameId,
+  body: { targetBlockNumber?: number; pick?: string; amount: number },
+): Promise<{ bet: Bet; points: string }> {
+  if (isDemo()) return Promise.reject(new ApiError(403, "데모 계정은 배팅할 수 없어요. 로그인해 주세요"));
+  return authRequest(`/games/${game}/bets`, { method: "POST", body: JSON.stringify(body) });
 }
 
-/** 최근 블록 목록 (최신이 앞) */
-export async function getRecentBlocks(limit: number): Promise<Block[]> {
-  const now = Date.now();
-  const blocks = Array.from({ length: limit }, (_, i) => mockBlock(now - (limit - 1 - i) * BLOCK_INTERVAL_MS));
-  return blocks.reverse();
-}
+/** 내 배팅 기록 (최근 것부터) */
+export const getMyBets = (game: GameId, limit = 20) =>
+  isDemo()
+    ? Promise.resolve({ items: [] as Bet[] })
+    : authRequest<{ items: Bet[] }>(`/games/bets?game=${game}&limit=${limit}`);
 
-/** 새 블록이 생기면 onBlock 을 부른다. 반환값을 부르면 구독 해제 */
-export function subscribeBlocks(onBlock: (block: Block) => void): () => void {
-  const timer = setInterval(() => onBlock(mockBlock(Date.now())), BLOCK_INTERVAL_MS);
-  return () => clearInterval(timer);
-}
+// ---- 입금 ----
+
+export type DepositInfo = {
+  /** 내 입금 주소. 아래 토큰을 보내면 포인트가 적립된다 */
+  address: string;
+  chainId: number;
+  currencies: { symbol: string; address: string; decimals: number; pointRatio: string }[];
+};
+
+/** 내 입금 주소 (처음 부르면 서버가 발급한다) */
+export const getDepositInfo = () =>
+  isDemo()
+    ? Promise.reject(new ApiError(403, "데모 계정은 입금 주소가 없어요. 로그인해 주세요"))
+    : authRequest<DepositInfo>("/deposit-address");

@@ -36,7 +36,7 @@ type MatchMarket = {
   live?: boolean;
 };
 
-/** 게임 입장 카드. icon 이 "eth" 면 이더리움 코인, "churu" 면 츄르 그림, "cat" 이면 고양이 얼굴, "mouse" 면 쥐 얼굴 */
+/** 게임 입장 카드. icon 이 "eth" 면 이더리움 코인, "churu" 면 츄르 그림, "cat" 이면 고양이 얼굴, "mouse" 면 쥐 얼굴, "dice" 면 주사위 */
 type GameMarket = {
   kind: "game";
   id: string;
@@ -95,6 +95,16 @@ export const MARKETS: Market[] = [
     title: "이더리움 블록 그림 맞추기",
     description: "블록 해시 마지막 3글자가 그림이 돼요. 츄르 3개면 12배!",
     href: "/games/block-match",
+    live: true,
+    isNew: true,
+  },
+  {
+    kind: "game",
+    id: "5",
+    icon: "dice",
+    title: "이더리움 블록 주사위",
+    description: "블록 해시로 굴리는 주사위 2개, 합이 대일까 소일까 럭키 7일까?",
+    href: "/games/dice",
     live: true,
     isNew: true,
   },

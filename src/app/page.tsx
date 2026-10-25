@@ -2,18 +2,24 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
+import AccountMenu from "@/components/AccountMenu";
 import CatHead from "@/components/CatHead";
 import ChuruIcon from "@/components/ChuruIcon";
+import Die from "@/components/Die";
 import SymbolArt from "@/components/MatchSymbols";
-import { getPoints, hasTokens } from "@/lib/api";
+import { ApiError, feedChuru, getPoints, hasTokens } from "@/lib/api";
 import { MARKETS, type Market } from "@/lib/markets";
 
 // 토큰은 localStorage 에 있으니 클라이언트에서만 읽는다 (서버 렌더링 때는 비로그인으로 본다)
 const subscribe = () => () => {};
 
+type BuyMarket = Extract<Market, { kind: "buy" }>;
+
 export default function LandingPage() {
+  const router = useRouter();
   const loggedIn = useSyncExternalStore(subscribe, hasTokens, () => false);
   const [query, setQuery] = useState("");
   // 카드 버튼을 눌렀을 때 띄우는 메시지 (null 이면 닫힘)
@@ -28,14 +34,45 @@ export default function LandingPage() {
       .catch(() => setPoints(null));
   }, [loggedIn]);
 
+  /** 츄르 사 주기: 로그인·포인트를 확인하고, 확인을 누르면 서버에서 포인트를 뺀다 */
+  function buy(m: BuyMarket) {
+    if (!loggedIn) {
+      setMessage({ message: "로그인하면 Chonk 한테\n츄르를 사 줄 수 있어요", onConfirm: () => router.push("/login") });
+      return;
+    }
+    const short = () =>
+      setMessage({
+        message: `포인트가 모자라요 😿\n츄르는 ${m.price} P 예요`,
+        image: "/images/cat-grumpy.png",
+      });
+    if (points !== null && Number(points) < m.price) return short();
+
+    setMessage({
+      message: `츄르는 ${m.price} 포인트예요.\nChonk 한테 사 줄까요?`,
+      onConfirm: async () => {
+        setMessage({ message: "츄르 사는 중..." });
+        try {
+          const { points: after } = await feedChuru();
+          setPoints(after);
+          setMessage({ message: `${m.thanks}\n남은 포인트 ${formatPoints(after)} P`, image: "/images/cat-happy.png" });
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 400) short();
+          else if (err instanceof ApiError && err.status === 401) router.push("/login");
+          else setMessage({ message: err instanceof Error ? err.message : "츄르를 사지 못했어요" });
+        }
+      },
+    });
+  }
+
   const markets = MARKETS.filter((m) => marketText(m).toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <div className="flex flex-1 flex-col">
       <header className="sticky top-0 z-10 border-b border-foreground/10 bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
-          <Link href="/" className="shrink-0 text-xl font-bold">
-            Chonk
+          <Link href="/" className="shrink-0" aria-label="Chonk 홈">
+            {/* 로고 (public/images/logo-chonk.svg, 가로 35 : 세로 8) */}
+            <Image src="/images/logo-chonk.svg" alt="CHONK" width={140} height={32} unoptimized priority className="h-6 w-auto" />
           </Link>
           <input
             type="search"
@@ -44,12 +81,14 @@ export default function LandingPage() {
             onChange={(e) => setQuery(e.target.value)}
             className="min-w-0 flex-1 rounded-md bg-foreground/5 px-4 py-2 text-sm outline-primary sm:max-w-md"
           />
-          <Link
-            href={loggedIn ? "/me" : "/login"}
-            className="ml-auto shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white"
-          >
-            {!loggedIn ? "로그인" : points === null ? "내 포인트" : `${formatPoints(points)} P`}
-          </Link>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {loggedIn && (
+              <Link href="/me" className="hidden rounded-md bg-primary/10 px-3 py-1.5 text-sm font-bold text-primary sm:block">
+                {points === null ? "내 포인트" : `${formatPoints(points)} P`}
+              </Link>
+            )}
+            <AccountMenu />
+          </div>
         </div>
       </header>
 
@@ -59,7 +98,7 @@ export default function LandingPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {markets.map((m) => (
-              <MarketCard key={m.id} market={m} onMessage={setMessage} />
+              <MarketCard key={m.id} market={m} onMessage={setMessage} onBuy={buy} />
             ))}
           </div>
         )}
@@ -69,10 +108,7 @@ export default function LandingPage() {
       <CornerCat />
 
       <footer className="mt-auto border-t border-foreground/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-sm text-foreground/60 sm:flex-row sm:items-center sm:justify-between sm:pr-44">
-          <span className="font-bold text-foreground">Chonk</span>
-          <span>© 2026 Chonk. All rights reserved.</span>
-        </div>
+        <div className="mx-auto max-w-7xl px-4 py-6 text-sm text-foreground/60">© 2026 Chonk. All rights reserved.</div>
       </footer>
 
       {message && <MessageModal dialog={message} onClose={() => setMessage(null)} />}
@@ -178,7 +214,15 @@ function marketText(m: Market): string {
 /** 메시지 창 내용. onConfirm 이 있으면 확인/취소 두 버튼을 보여준다. image 가 없으면 메인 캐릭터 */
 type Dialog = { message: string; image?: string; onConfirm?: () => void };
 
-function MarketCard({ market: m, onMessage }: { market: Market; onMessage: (dialog: Dialog) => void }) {
+function MarketCard({
+  market: m,
+  onMessage,
+  onBuy,
+}: {
+  market: Market;
+  onMessage: (dialog: Dialog) => void;
+  onBuy: (m: BuyMarket) => void;
+}) {
   if (m.kind === "soon") return <SoonCard />;
 
   const live = "live" in m && m.live;
@@ -203,7 +247,7 @@ function MarketCard({ market: m, onMessage }: { market: Market; onMessage: (dial
       ) : (
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xl">
-            {m.icon === "eth" ? <EthIcon /> : m.icon === "churu" ? <ChuruIcon /> : m.icon === "cat" ? <CatHead cat="orange" className="h-8 w-8" /> : m.icon === "mouse" ? <SymbolArt symbol="mouse" className="h-8 w-8" /> : m.icon}
+            {m.icon === "eth" ? <EthIcon /> : m.icon === "churu" ? <ChuruIcon /> : m.icon === "cat" ? <CatHead cat="orange" className="h-8 w-8" /> : m.icon === "mouse" ? <SymbolArt symbol="mouse" className="h-8 w-8" /> : m.icon === "dice" ? <Die value={5} className="h-8 w-8" /> : m.icon}
           </span>
           <div>
             <h3 className="font-semibold leading-snug">{m.title}</h3>
@@ -222,13 +266,7 @@ function MarketCard({ market: m, onMessage }: { market: Market; onMessage: (dial
           </Link>
         ) : m.kind === "buy" ? (
           <button
-            onClick={() =>
-              onMessage({
-                message: `츄르는 ${m.price} 코인이에요.
-Chonk 한테 사 줄까요?`,
-                onConfirm: () => onMessage({ message: m.thanks, image: "/images/cat-happy.png" }),
-              })
-            }
+            onClick={() => onBuy(m)}
             className="w-full rounded-md bg-accent/15 py-2.5 text-sm font-medium text-accent hover:bg-accent/25"
           >
             {m.button}
