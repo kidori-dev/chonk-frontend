@@ -32,6 +32,8 @@ const GAME_LABEL: Record<GameId, string> = {
   "cat-race": "고양이 경주",
   "block-match": "블록 그림 맞추기",
   dice: "주사위",
+  ladder: "사다리",
+  lottery: "제비뽑기",
   "churu-match": "츄르 그림 맞추기",
 };
 

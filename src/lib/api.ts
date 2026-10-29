@@ -186,7 +186,7 @@ export type Round = {
 
 // ---- 게임 배팅 ----
 
-export type GameId = "coin" | "cat-race" | "block-match" | "dice" | "churu-match";
+export type GameId = "coin" | "cat-race" | "block-match" | "dice" | "ladder" | "lottery" | "churu-match";
 
 /** 배팅 1건. status 가 pending 이면 결과 대기, settled 면 payout 까지 반영됨 */
 export type Bet = {

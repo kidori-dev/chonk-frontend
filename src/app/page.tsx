@@ -181,6 +181,27 @@ function CornerCat() {
   );
 }
 
+// 사다리 (게임 카드 아이콘)
+function LadderIcon() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" stroke="#5b2e14" strokeWidth={2.5} strokeLinecap="round">
+      <path d="M8 4v24M16 4v24M24 4v24" />
+      <path d="M8 10h8M16 17h8M8 23h8" stroke="#e9823a" />
+    </svg>
+  );
+}
+
+/** 제비 (접힌 쪽지 두 장, 앞의 것에 당첨 별) */
+function LotteryIcon() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" stroke="#5b2e14" strokeWidth={2} strokeLinejoin="round">
+      <rect x="5" y="6" width="13" height="20" rx="2" fill="#d8ecc8" transform="rotate(-12 11 16)" />
+      <rect x="14" y="6" width="13" height="20" rx="2" fill="#ffd9b0" transform="rotate(8 20 16)" />
+      <path d="M20.5 11.5l1.3 2.6 2.8.4-2 2 .5 2.8-2.6-1.4-2.5 1.4.5-2.8-2-2 2.8-.4z" fill="#e9823a" strokeWidth={1.2} />
+    </svg>
+  );
+}
+
 // 이더리움 코인 (public/images/coin-eth.svg)
 function EthIcon() {
   return <Image src="/images/coin-eth.svg" alt="" width={32} height={32} unoptimized className="h-8 w-8" />;
@@ -227,9 +248,24 @@ function MarketCard({
 
   const live = "live" in m && m.live;
   const isNew = "isNew" in m && m.isNew;
+  const best = "best" in m && m.best;
+  const tag = "tag" in m ? m.tag : undefined;
 
   return (
-    <article className="flex min-h-48 flex-col rounded-lg border border-foreground/10 bg-white p-4 shadow-sm transition hover:shadow-md">
+    <article
+      className={`relative flex min-h-48 flex-col rounded-lg border bg-white p-4 shadow-sm transition hover:shadow-md ${
+        best ? "border-primary/50 ring-2 ring-primary/15" : "border-foreground/10"
+      }`}
+    >
+      {/* 추천 게임: 오른쪽 위 모서리에 작은 왕관 */}
+      {best && (
+        <span
+          title="추천 게임"
+          className="absolute -top-2.5 -right-2.5 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-primary text-sm shadow-md"
+        >
+          👑
+        </span>
+      )}
       {m.kind === "match" ? (
         <div className="space-y-3">
           {m.teams.map((t) => (
@@ -247,7 +283,7 @@ function MarketCard({
       ) : (
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xl">
-            {m.icon === "eth" ? <EthIcon /> : m.icon === "churu" ? <ChuruIcon /> : m.icon === "cat" ? <CatHead cat="orange" className="h-8 w-8" /> : m.icon === "mouse" ? <SymbolArt symbol="mouse" className="h-8 w-8" /> : m.icon === "dice" ? <Die value={5} className="h-8 w-8" /> : m.icon}
+            {m.icon === "eth" ? <EthIcon /> : m.icon === "churu" ? <ChuruIcon /> : m.icon === "cat" ? <CatHead cat="orange" className="h-8 w-8" /> : m.icon === "mouse" ? <SymbolArt symbol="mouse" className="h-8 w-8" /> : m.icon === "dice" ? <Die value={5} className="h-8 w-8" /> : m.icon === "ladder" ? <LadderIcon /> : m.icon === "lottery" ? <LotteryIcon /> : m.icon}
           </span>
           <div>
             <h3 className="font-semibold leading-snug">{m.title}</h3>
@@ -316,7 +352,7 @@ function MarketCard({
           </div>
         )}
 
-        {(live || isNew) && (
+        {(live || isNew || tag) && (
           <div className="mt-4 flex items-center gap-2 text-xs">
             {live && (
               <span className="flex items-center gap-1 font-semibold text-red-500">
@@ -324,6 +360,7 @@ function MarketCard({
                 LIVE
               </span>
             )}
+            {tag && <span className="rounded-full bg-foreground/5 px-2 py-0.5 font-semibold text-foreground/60">{tag}</span>}
             {isNew && <span className="font-semibold text-primary">✦ NEW</span>}
           </div>
         )}

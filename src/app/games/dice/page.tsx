@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import BetSheet from "@/components/BetSheet";
 import AccountMenu from "@/components/AccountMenu";
 import BetAmountPicker from "@/components/BetAmountPicker";
 import BetButton from "@/components/BetButton";
@@ -95,17 +96,7 @@ export default function DicePage() {
 
         {/* 오른쪽: 배팅(모바일은 화면 아래 고정) + 내 자산 */}
         <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:space-y-4 lg:self-start">
-          <section className="fixed inset-x-0 bottom-0 z-20 rounded-t-xl border-t border-foreground/10 bg-white px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgb(0_0_0/0.08)] lg:static lg:rounded-xl lg:border lg:p-5 lg:shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">주사위 합 맞히기</h2>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${
-                  betClosed ? "bg-red-50 text-red-500" : "bg-eth/10 text-eth"
-                }`}
-              >
-                {betClosed ? "🔒 배팅 마감" : `⏱ 마감까지 ${betRemain}초`}
-              </span>
-            </div>
+          <BetSheet title="주사위 합 맞히기" betClosed={betClosed} betRemain={betRemain}>
             <p className="mt-1 mb-3 text-sm text-foreground/60">
               {latest && <b className="text-eth">#{(latest.number + BET_AHEAD).toLocaleString()}</b>} 블록 주사위 2개의
               합은?
@@ -178,7 +169,7 @@ export default function DicePage() {
                 "소, 럭키 7, 대 중에 골라 주세요"
               )}
             </p>
-          </section>
+          </BetSheet>
 
           <MyBets rows={g.rows} refreshKey={g.pointsVersion} />
         </aside>

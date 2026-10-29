@@ -36,7 +36,7 @@ type MatchMarket = {
   live?: boolean;
 };
 
-/** 게임 입장 카드. icon 이 "eth" 면 이더리움 코인, "churu" 면 츄르 그림, "cat" 이면 고양이 얼굴, "mouse" 면 쥐 얼굴, "dice" 면 주사위 */
+/** 게임 입장 카드. icon 이 "eth" 면 이더리움 코인, "churu" 면 츄르 그림, "cat" 이면 고양이 얼굴, "mouse" 면 쥐 얼굴, "dice" 면 주사위, "ladder" 면 사다리, "lottery" 면 제비 */
 type GameMarket = {
   kind: "game";
   id: string;
@@ -47,6 +47,10 @@ type GameMarket = {
   href: string;
   live?: boolean;
   isNew?: boolean;
+  /** 추천 게임: 카드 테두리를 살짝 강조하고 오른쪽 위에 왕관 표시 */
+  best?: boolean;
+  /** 카드 아래 작은 태그 (LIVE 가 아닌 카드용). 예) "⚡ 바로 결과" */
+  tag?: string;
 };
 
 type Team = { name: string; short: string; color: string };
@@ -61,6 +65,7 @@ type BuyMarket = {
   price: number;
   thanks: string;
   isNew?: boolean;
+  tag?: string;
 };
 
 /** 준비 중인 게임 자리 (? 와 Coming soon 만 보여준다) */
@@ -86,7 +91,6 @@ export const MARKETS: Market[] = [
     description: "블록 해시로 달리는 고양이 4마리, 1등은 누구?",
     href: "/games/cat-race",
     live: true,
-    isNew: true,
   },
   {
     kind: "game",
@@ -96,7 +100,6 @@ export const MARKETS: Market[] = [
     description: "블록 해시 마지막 3글자가 그림이 돼요. 츄르 3개면 12배!",
     href: "/games/block-match",
     live: true,
-    isNew: true,
   },
   {
     kind: "game",
@@ -106,7 +109,27 @@ export const MARKETS: Market[] = [
     description: "블록 해시로 굴리는 주사위 2개, 합이 대일까 소일까 럭키 7일까?",
     href: "/games/dice",
     live: true,
+  },
+  {
+    kind: "game",
+    id: "6",
+    icon: "ladder",
+    title: "이더리움 블록 사다리",
+    description: "블록 해시로 그려지는 사다리, 4줄 중 당첨은 단 하나!",
+    href: "/games/ladder",
+    live: true,
     isNew: true,
+  },
+  {
+    kind: "game",
+    id: "7",
+    icon: "lottery",
+    title: "이더리움 블록 제비뽑기",
+    description: "제비 16장 중 해시 마지막 글자가 당첨! 맞히면 15배",
+    href: "/games/lottery",
+    live: true,
+    isNew: true,
+    best: true,
   },
   {
     kind: "game",
@@ -115,7 +138,7 @@ export const MARKETS: Market[] = [
     title: "랜덤 츄르 그림 맞추기",
     description: "츄르 세 개가 나란히 나오면 잭팟!",
     href: "/games/churu-match",
-    isNew: true,
+    tag: "⚡ 바로 결과",
   },
 
   {
@@ -126,7 +149,7 @@ export const MARKETS: Market[] = [
     button: "사줄게요",
     price: 10,
     thanks: "냥! 고마워요 😻 Chonk 가 츄르를 맛있게 먹었어요",
-    isNew: true
+    tag: "💝 응원하기",
   },
   { kind: "soon", id: "soon-1", title: "새 게임 준비 중" },
 ];
