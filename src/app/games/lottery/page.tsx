@@ -160,8 +160,12 @@ export default function LotteryPage() {
                   >
                     #{b.number.toLocaleString()}
                   </a>
-                  <span className="min-w-0 truncate font-mono text-xs text-foreground/40">{b.hash.slice(0, 14)}…</span>
-                  <span className="ml-auto flex items-center gap-1 text-xs font-bold text-foreground/60">
+                  {/* 해시 전체, 당첨을 정한 마지막 글자만 강조 */}
+                  <span className="min-w-0 flex-1 font-mono text-xs break-all text-foreground/50" title={b.hash}>
+                    {b.hash.slice(0, -1)}
+                    <b className="text-sm text-primary">{b.hash.slice(-1)}</b>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-foreground/60">
                     🎁 <CharChip char={c} />
                   </span>
                 </li>
