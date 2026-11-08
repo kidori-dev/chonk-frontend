@@ -11,8 +11,8 @@ import Die from "@/components/Die";
 import PickModeToggle from "@/components/PickModeToggle";
 import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
-import { BET_AHEAD, MY_BETS_SHOWN, blockUrl } from "@/lib/betting";
-import { profitOf, useBlockBetting, type BetRow } from "@/lib/useBlockBetting";
+import { BET_AHEAD, blockUrl } from "@/lib/betting";
+import { useBlockBetting } from "@/lib/useBlockBetting";
 
 // 이더리움 블록 주사위. 블록 해시로 주사위 2개를 굴려 두 눈의 합에 건다
 // 해시 끝에서부터 1바이트(2글자)씩 읽어 252 이상은 건너뛰고 6으로 나눈 나머지 + 1 → 1~6 이 똑같은 확률로 나온다
@@ -47,7 +47,7 @@ function rollOf(hash: string): Roll {
 const DICE_PICKS: string[] = PICKS.map((p) => p.key);
 
 export default function DicePage() {
-  const g = useBlockBetting({ game: "dice", picks: DICE_PICKS, revealMs: ROLL_MS });
+  const g = useBlockBetting({ game: "dice", picks: DICE_PICKS });
   const { latest, history, betClosed, betRemain, blockRemain, mode, amount } = g;
   // 고른 것 (PICKS 의 순서)
   const pick = g.pick === null ? null : DICE_PICKS.indexOf(g.pick);
@@ -171,7 +171,7 @@ export default function DicePage() {
             </p>
           </BetSheet>
 
-          <MyBets rows={g.rows} refreshKey={g.pointsVersion} />
+          <WalletCard />
         </aside>
 
         {/* 지난 블록 */}
@@ -218,55 +218,6 @@ export default function DicePage() {
   );
 }
 
-/** 내 자산 카드 안의 배팅 기록 줄들 (서버 배팅 기록) */
-function MyBets({ rows, refreshKey }: { rows: BetRow[]; refreshKey: number }) {
-  return (
-    <WalletCard empty={rows.length === 0} refreshKey={refreshKey}>
-      {rows.slice(0, MY_BETS_SHOWN).map((row) => {
-        const { bet } = row;
-        const pick = PICKS[DICE_PICKS.indexOf(bet.pick!)];
-        if (!row.revealed || !row.hash) {
-          return (
-            <li key={bet.id} className="animate-pop flex items-center gap-2 rounded-lg bg-eth/10 px-3 py-2 text-sm text-eth">
-              <span className="w-24 shrink-0 text-xs font-semibold tabular-nums">🔒 #{bet.targetBlockNumber?.toLocaleString()}</span>
-              <span className="text-xs font-bold" style={{ color: pick.color }}>
-                {pick.label}
-              </span>
-              <span className="text-xs font-bold tabular-nums">{Number(bet.amount).toLocaleString()} 코인</span>
-              <span className="ml-auto animate-pulse text-xs font-semibold">결과 기다리는 중</span>
-            </li>
-          );
-        }
-        const roll = rollOf(row.hash);
-        const win = PICKS[roll.pick].key === bet.pick;
-        const profit = profitOf(row, win ? pick.times : 0);
-        return (
-          <li
-            key={bet.id}
-            className={`animate-pop flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${win ? "bg-sky-50" : "bg-foreground/[0.03]"}`}
-          >
-            <a
-              href={blockUrl(bet.targetBlockNumber!)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-24 shrink-0 text-xs tabular-nums text-blue-600 hover:underline"
-            >
-              #{bet.targetBlockNumber!.toLocaleString()}
-            </a>
-            <span className="text-xs font-bold" style={{ color: pick.color }}>
-              {pick.label}
-            </span>
-            <span className="text-xs text-foreground/40">→ {roll.sum}</span>
-            <span className={`ml-auto text-xs font-bold tabular-nums ${win ? "text-sky-600" : "text-foreground/50"}`}>
-              {win ? `🎉 +${profit.toLocaleString()}` : `😿 ${profit.toLocaleString()}`} 코인
-              {!row.settled && <span className="ml-1 font-medium text-foreground/40">정산 중</span>}
-            </span>
-          </li>
-        );
-      })}
-    </WalletCard>
-  );
-}
 
 /** 주사위 판. 블록이 나오면 주사위 2개가 데굴데굴 구르다가 해시로 정해진 눈에서 멈춘다 */
 function DiceTable({ block }: { block: Block }) {

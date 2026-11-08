@@ -10,8 +10,8 @@ import BetButton from "@/components/BetButton";
 import SymbolArt, { type MatchSymbol } from "@/components/MatchSymbols";
 import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
-import { BET_AHEAD, MY_BETS_SHOWN, blockUrl } from "@/lib/betting";
-import { profitOf, useBlockBetting, type BetRow } from "@/lib/useBlockBetting";
+import { BET_AHEAD, blockUrl } from "@/lib/betting";
+import { useBlockBetting } from "@/lib/useBlockBetting";
 
 // 이더리움 블록 그림 맞추기. 블록 해시 마지막 3글자가 릴 3개의 그림이 된다
 // 0~3 츄르, 4~7 생선, 8~b 고양이, c~f 쥐. 해시만 있으면 누구나 결과를 다시 계산할 수 있다
@@ -21,7 +21,6 @@ const SYMBOL_NAME: Record<string, string> = { churu: "츄르", fish: "생선", c
 
 /** 릴이 왼쪽부터 차례로 멈추는 시각(ms). 마지막 릴이 멈추면 결과를 보여준다 */
 const STOP_AT = [900, 1400, 1900];
-const REVEAL_MS = STOP_AT[STOP_AT.length - 1];
 
 /**
  * 배당표 (건 금액의 몇 배를 돌려받는지). 확률: 츄르 3개 1/64, 같은 그림 3개 3/64,
@@ -48,7 +47,7 @@ function spinOf(hash: string): Spin {
 }
 
 export default function BlockMatchPage() {
-  const g = useBlockBetting({ game: "block-match", picks: null, revealMs: REVEAL_MS });
+  const g = useBlockBetting({ game: "block-match", picks: null });
   const { latest, history, betClosed, betRemain, blockRemain, amount } = g;
   // 매 라운드 자동 참여 (= 같은 금액으로 자동 배팅)
   const auto = g.mode === "fixed";
@@ -145,7 +144,7 @@ export default function BlockMatchPage() {
             </p>
           </BetSheet>
 
-          <MyBets rows={g.rows} refreshKey={g.pointsVersion} />
+          <WalletCard />
         </aside>
 
         {/* 배당표 + 지난 블록 */}
@@ -208,51 +207,6 @@ export default function BlockMatchPage() {
   );
 }
 
-/** 내 자산 카드 안의 배팅 기록 줄들 (서버 배팅 기록) */
-function MyBets({ rows, refreshKey }: { rows: BetRow[]; refreshKey: number }) {
-  return (
-    <WalletCard empty={rows.length === 0} refreshKey={refreshKey}>
-      {rows.slice(0, MY_BETS_SHOWN).map((row) => {
-        const { bet } = row;
-        if (!row.revealed || !row.hash) {
-          return (
-            <li key={bet.id} className="animate-pop flex items-center gap-2 rounded-lg bg-eth/10 px-3 py-2 text-sm text-eth">
-              <span className="w-24 shrink-0 text-xs font-semibold tabular-nums">🔒 #{bet.targetBlockNumber?.toLocaleString()}</span>
-              <span className="text-xs font-bold tabular-nums">{Number(bet.amount).toLocaleString()} 코인</span>
-              <span className="ml-auto animate-pulse text-xs font-semibold">결과 기다리는 중</span>
-            </li>
-          );
-        }
-        const spin = spinOf(row.hash);
-        const profit = profitOf(row, spin.times);
-        return (
-          <li
-            key={bet.id}
-            className={`animate-pop flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${profit > 0 ? "bg-sky-50" : "bg-foreground/[0.03]"}`}
-          >
-            <a
-              href={blockUrl(bet.targetBlockNumber!)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-24 shrink-0 text-xs tabular-nums text-blue-600 hover:underline"
-            >
-              #{bet.targetBlockNumber!.toLocaleString()}
-            </a>
-            <span className="flex gap-0.5">
-              {spin.symbols.map((s, i) => (
-                <SymbolArt key={i} symbol={s} className="h-5 w-5" />
-              ))}
-            </span>
-            <span className={`ml-auto text-xs font-bold tabular-nums ${profit > 0 ? "text-sky-600" : "text-foreground/50"}`}>
-              {profit > 0 ? `🎉 +${profit.toLocaleString()}` : profit === 0 ? "본전" : `😿 ${profit.toLocaleString()}`} 코인
-              {!row.settled && <span className="ml-1 font-medium text-foreground/40">정산 중</span>}
-            </span>
-          </li>
-        );
-      })}
-    </WalletCard>
-  );
-}
 
 /** 릴 3개. 블록이 나오면 그림이 빠르게 바뀌다가 왼쪽부터 해시 글자에 맞는 그림으로 멈춘다 */
 function Reels({ block }: { block: Block }) {

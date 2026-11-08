@@ -11,9 +11,9 @@ import CatHead, { type CatKind } from "@/components/CatHead";
 import PickModeToggle from "@/components/PickModeToggle";
 import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
-import { BET_AHEAD, MY_BETS_SHOWN, blockUrl } from "@/lib/betting";
+import { BET_AHEAD, blockUrl } from "@/lib/betting";
 import { LADDER_COLS, LADDER_ROWS, ladderOf, pathOf } from "@/lib/ladder";
-import { profitOf, useBlockBetting, type BetRow } from "@/lib/useBlockBetting";
+import { useBlockBetting } from "@/lib/useBlockBetting";
 
 // 이더리움 블록 사다리. 4줄 중 하나만 당첨. 규칙은 src/lib/ladder.ts (백엔드 rules.ts 와 같아야 한다)
 
@@ -32,14 +32,12 @@ const PAYOUT = 3.8;
 const RUNG_STEP_MS = 80;
 const DRAW_MS = 3000;
 
-/** 새 블록 애니메이션이 끝나는 시간 (가로줄 + 길 그리기) */
-const REVEAL_MS = (LADDER_ROWS + 1) * RUNG_STEP_MS + DRAW_MS;
 
 /** 서버 pick 값 = 출발 칸 번호 (CATS 순서) */
 const LADDER_PICKS = CATS.map((_, i) => String(i));
 
 export default function LadderPage() {
-  const g = useBlockBetting({ game: "ladder", picks: LADDER_PICKS, revealMs: REVEAL_MS });
+  const g = useBlockBetting({ game: "ladder", picks: LADDER_PICKS });
   const { latest, history, betClosed, betRemain, blockRemain, mode, amount } = g;
   // 고른 출발 칸 (CATS 의 순서)
   const pick = g.pick === null ? null : Number(g.pick);
@@ -160,7 +158,7 @@ export default function LadderPage() {
             </p>
           </BetSheet>
 
-          <MyBets rows={g.rows} refreshKey={g.pointsVersion} />
+          <WalletCard />
         </aside>
 
         {/* 지난 사다리 */}
@@ -208,58 +206,6 @@ export default function LadderPage() {
   );
 }
 
-/** 내 자산 카드 안의 배팅 기록 줄들 (서버 배팅 기록) */
-function MyBets({ rows, refreshKey }: { rows: BetRow[]; refreshKey: number }) {
-  return (
-    <WalletCard empty={rows.length === 0} refreshKey={refreshKey}>
-      {rows.slice(0, MY_BETS_SHOWN).map((row) => {
-        const { bet } = row;
-        const picked = Number(bet.pick);
-        const cat = CATS[picked];
-        const label = (
-          <span className="flex items-center gap-0.5 text-xs font-bold" style={{ color: cat.color }}>
-            <CatHead cat={cat.kind} className="h-4 w-4" />
-            {picked + 1}번
-          </span>
-        );
-        if (!row.revealed || !row.hash) {
-          return (
-            <li key={bet.id} className="animate-pop flex items-center gap-2 rounded-lg bg-eth/10 px-3 py-2 text-sm text-eth">
-              <span className="w-24 shrink-0 text-xs font-semibold tabular-nums">🔒 #{bet.targetBlockNumber?.toLocaleString()}</span>
-              {label}
-              <span className="text-xs font-bold tabular-nums">{Number(bet.amount).toLocaleString()} 코인</span>
-              <span className="ml-auto animate-pulse text-xs font-semibold">결과 기다리는 중</span>
-            </li>
-          );
-        }
-        const winner = ladderOf(row.hash).winner;
-        const win = winner === picked;
-        const profit = profitOf(row, win ? PAYOUT : 0);
-        return (
-          <li
-            key={bet.id}
-            className={`animate-pop flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${win ? "bg-sky-50" : "bg-foreground/[0.03]"}`}
-          >
-            <a
-              href={blockUrl(bet.targetBlockNumber!)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-24 shrink-0 text-xs tabular-nums text-blue-600 hover:underline"
-            >
-              #{bet.targetBlockNumber!.toLocaleString()}
-            </a>
-            {label}
-            <span className="text-xs text-foreground/40">→ 🎁 {winner + 1}번</span>
-            <span className={`ml-auto text-xs font-bold tabular-nums ${win ? "text-sky-600" : "text-foreground/50"}`}>
-              {win ? `🎉 +${profit.toLocaleString()}` : `😿 ${profit.toLocaleString()}`} 코인
-              {!row.settled && <span className="ml-1 font-medium text-foreground/40">정산 중</span>}
-            </span>
-          </li>
-        );
-      })}
-    </WalletCard>
-  );
-}
 
 // 판 크기 (SVG 좌표)
 const W = 320;

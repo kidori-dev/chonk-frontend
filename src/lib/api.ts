@@ -218,11 +218,11 @@ export function placeBet(
   return authRequest(`/games/${game}/bets`, { method: "POST", body: JSON.stringify(body) });
 }
 
-/** 내 배팅 기록 (최근 것부터) */
-export const getMyBets = (game: GameId, limit = 20) =>
+/** 내 배팅 기록 (최근 것부터). game 을 비우면 모든 게임 */
+export const getMyBets = (game: GameId | undefined, limit = 20) =>
   isDemo()
     ? Promise.resolve({ items: [] as Bet[] })
-    : authRequest<{ items: Bet[] }>(`/games/bets?game=${game}&limit=${limit}`);
+    : authRequest<{ items: Bet[] }>(`/games/bets?${game ? `game=${game}&` : ""}limit=${limit}`);
 
 // ---- 입금 ----
 

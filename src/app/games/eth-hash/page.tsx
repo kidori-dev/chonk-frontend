@@ -10,8 +10,8 @@ import BetButton from "@/components/BetButton";
 import PickModeToggle from "@/components/PickModeToggle";
 import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
-import { BET_AHEAD, MY_BETS_SHOWN, blockUrl } from "@/lib/betting";
-import { profitOf, useBlockBetting, type BetRow } from "@/lib/useBlockBetting";
+import { BET_AHEAD, blockUrl } from "@/lib/betting";
+import { useBlockBetting } from "@/lib/useBlockBetting";
 
 // 블록 해시의 마지막 글자(16진수)가 홀수면 동전 앞면, 짝수면 뒷면
 type Side = "odd" | "even";
@@ -38,7 +38,7 @@ function shortHash(hash: string): string {
 const PAYOUT = 2;
 
 export default function EthHashGamePage() {
-  const g = useBlockBetting({ game: "coin", picks: ["odd", "even"], revealMs: COIN_SPIN_MS });
+  const g = useBlockBetting({ game: "coin", picks: ["odd", "even"] });
   const { blocks, latest, history, betClosed, betRemain, mode, amount } = g;
   const pick = g.pick as Side | null;
   const remain = g.blockRemain;
@@ -156,7 +156,7 @@ export default function EthHashGamePage() {
             </p>
           </BetSheet>
 
-          <MyBets rows={g.rows} refreshKey={g.pointsVersion} />
+          <WalletCard />
         </aside>
 
         {/* 블록 기록 */}
@@ -230,53 +230,6 @@ export default function EthHashGamePage() {
   );
 }
 
-/** 내 자산 카드 안의 배팅 기록 줄들 (서버 배팅 기록) */
-function MyBets({ rows, refreshKey }: { rows: BetRow[]; refreshKey: number }) {
-  return (
-    <WalletCard empty={rows.length === 0} refreshKey={refreshKey}>
-      {rows.slice(0, MY_BETS_SHOWN).map((row) => {
-        const { bet } = row;
-        const pick = SIDE[bet.pick as Side];
-        // 결과를 기다리는 배팅
-        if (!row.revealed || !row.hash) {
-          return (
-            <li key={bet.id} className="animate-pop flex items-center gap-2 rounded-lg bg-eth/10 px-3 py-2.5 text-sm text-eth">
-              <span className="w-24 shrink-0 text-xs font-semibold tabular-nums">🔒 #{bet.targetBlockNumber?.toLocaleString()}</span>
-              <span className={`rounded-md px-1.5 py-0.5 text-xs font-bold text-white ${pick.bg}`}>{pick.short}</span>
-              <span className="text-xs font-bold tabular-nums">{Number(bet.amount).toLocaleString()} 코인</span>
-              <span className="ml-auto animate-pulse text-xs font-semibold">결과 기다리는 중</span>
-            </li>
-          );
-        }
-        const char = lastChar(row.hash);
-        const win = sideOf(row.hash) === bet.pick;
-        const profit = profitOf(row, win ? PAYOUT : 0);
-        return (
-          <li
-            key={bet.id}
-            className={`animate-pop flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm ${win ? "bg-sky-50" : "bg-foreground/[0.03]"}`}
-          >
-            <a
-              href={blockUrl(bet.targetBlockNumber!)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-24 shrink-0 text-xs tabular-nums text-blue-600 hover:underline"
-            >
-              #{bet.targetBlockNumber!.toLocaleString()}
-            </a>
-            <span className={`rounded-md px-1.5 py-0.5 text-xs font-bold text-white ${pick.bg}`}>{pick.short}</span>
-            <span className="text-xs text-foreground/40">→</span>
-            <span className={`font-mono font-black ${SIDE[sideOf(row.hash)].text}`}>{char}</span>
-            <span className={`ml-auto text-xs font-bold tabular-nums ${win ? "text-sky-600" : "text-foreground/50"}`}>
-              {win ? `🎉 +${profit.toLocaleString()}` : `😿 ${profit.toLocaleString()}`} 코인
-              {!row.settled && <span className="ml-1 font-medium text-foreground/40">정산 중</span>}
-            </span>
-          </li>
-        );
-      })}
-    </WalletCard>
-  );
-}
 
 /** 최신 블록. 해시가 잠깐 뒤섞였다가 자리를 잡고, 마지막 글자가 크게 튀어나온다 */
 function LatestBlock({ block }: { block: Block }) {

@@ -13,11 +13,16 @@ export const BET_AHEAD = 2;
 /** 블록이 나오고(블록 시각 기준) 9초 동안만 배팅할 수 있고, 다음 블록 전 마지막 3초는 마감 */
 export const BET_OPEN_MS = BLOCK_INTERVAL_MS - 3_000;
 
-/** 고를 수 있는 배팅 금액(포인트) */
-export const BET_AMOUNTS = [10, 50, 100];
+/** 배팅 금액 입력칸의 처음 값(포인트). 금액은 1 이상 정수면 자유롭게 입력한다 */
+export const DEFAULT_BET = 10;
 
-/** 배팅 기록 카드에 보여줄 줄 수 (결과 기다리는 줄 포함) */
-export const MY_BETS_SHOWN = 5;
+/** 1 이상 정수인지 (서버 검증과 같다) */
+export function isValidBet(amount: number): boolean {
+  return Number.isSafeInteger(amount) && amount >= 1;
+}
+
+/** 내 자산 카드에 보여줄 배팅 기록 줄 수 (모든 게임, 결과 기다리는 줄 포함) */
+export const MY_BETS_SHOWN = 8;
 
 /** 서버에서 불러오는 배팅 기록 수 */
 export const MY_BETS_SIZE = 20;

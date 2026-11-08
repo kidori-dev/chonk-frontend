@@ -10,8 +10,8 @@ import BetSheet from "@/components/BetSheet";
 import PickModeToggle from "@/components/PickModeToggle";
 import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
-import { BET_AHEAD, MY_BETS_SHOWN, blockUrl } from "@/lib/betting";
-import { profitOf, useBlockBetting, type BetRow } from "@/lib/useBlockBetting";
+import { BET_AHEAD, blockUrl } from "@/lib/betting";
+import { useBlockBetting } from "@/lib/useBlockBetting";
 
 // 이더리움 블록 제비뽑기. 제비 16장(0~f) 중 해시 마지막 글자가 당첨. 맞히면 15배 (확률 1/16)
 // 백엔드 chonk-backend/src/modules/games/rules.ts 의 judgeLottery 와 같은 규칙
@@ -34,7 +34,7 @@ const SHUFFLE_MS = 2000;
 const lastChar = (hash: string) => hash.slice(-1).toLowerCase();
 
 export default function LotteryPage() {
-  const g = useBlockBetting({ game: "lottery", picks: CHARS, revealMs: SHUFFLE_MS });
+  const g = useBlockBetting({ game: "lottery", picks: CHARS });
   const { latest, history, betClosed, betRemain, blockRemain, mode, amount } = g;
   const pick = g.pick;
 
@@ -141,7 +141,7 @@ export default function LotteryPage() {
             </p>
           </BetSheet>
 
-          <MyBets rows={g.rows} refreshKey={g.pointsVersion} />
+          <WalletCard />
         </aside>
 
         {/* 지난 라운드 */}
@@ -191,50 +191,6 @@ function CharChip({ char }: { char: string }) {
   );
 }
 
-/** 내 자산 카드 안의 배팅 기록 줄들 (서버 배팅 기록) */
-function MyBets({ rows, refreshKey }: { rows: BetRow[]; refreshKey: number }) {
-  return (
-    <WalletCard empty={rows.length === 0} refreshKey={refreshKey}>
-      {rows.slice(0, MY_BETS_SHOWN).map((row) => {
-        const { bet } = row;
-        if (!row.revealed || !row.hash) {
-          return (
-            <li key={bet.id} className="animate-pop flex items-center gap-2 rounded-lg bg-eth/10 px-3 py-2 text-sm text-eth">
-              <span className="w-24 shrink-0 text-xs font-semibold tabular-nums">🔒 #{bet.targetBlockNumber?.toLocaleString()}</span>
-              <CharChip char={bet.pick!} />
-              <span className="text-xs font-bold tabular-nums">{Number(bet.amount).toLocaleString()} 코인</span>
-              <span className="ml-auto animate-pulse text-xs font-semibold">결과 기다리는 중</span>
-            </li>
-          );
-        }
-        const result = lastChar(row.hash);
-        const win = result === bet.pick;
-        const profit = profitOf(row, win ? PAYOUT : 0);
-        return (
-          <li
-            key={bet.id}
-            className={`animate-pop flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${win ? "bg-sky-50" : "bg-foreground/[0.03]"}`}
-          >
-            <a
-              href={blockUrl(bet.targetBlockNumber!)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-24 shrink-0 text-xs tabular-nums text-blue-600 hover:underline"
-            >
-              #{bet.targetBlockNumber!.toLocaleString()}
-            </a>
-            <CharChip char={bet.pick!} />
-            <span className="text-xs text-foreground/40">→ 🎁 {result}</span>
-            <span className={`ml-auto text-xs font-bold tabular-nums ${win ? "text-sky-600" : "text-foreground/50"}`}>
-              {win ? `🎉 +${profit.toLocaleString()}` : `😿 ${profit.toLocaleString()}`} 코인
-              {!row.settled && <span className="ml-1 font-medium text-foreground/40">정산 중</span>}
-            </span>
-          </li>
-        );
-      })}
-    </WalletCard>
-  );
-}
 
 /** 제비 판. 블록이 나오면 16장이 들썩이며 섞이다가, 해시 마지막 글자 제비 하나가 펼쳐진다 */
 function LotteryBoard({ block, pick }: { block: Block; pick: string | null }) {

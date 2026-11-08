@@ -11,8 +11,8 @@ import BetButton from "@/components/BetButton";
 import PickModeToggle from "@/components/PickModeToggle";
 import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
-import { BET_AHEAD, MY_BETS_SHOWN, blockUrl } from "@/lib/betting";
-import { profitOf, useBlockBetting, type BetRow } from "@/lib/useBlockBetting";
+import { BET_AHEAD, blockUrl } from "@/lib/betting";
+import { useBlockBetting } from "@/lib/useBlockBetting";
 
 // 고양이 경주. 블록 해시 64글자를 앞에서부터 읽으며 글자마다 해당 고양이가 한 칸씩 달린다
 // 0~3 치즈, 4~7 까망, 8~b 삼색이, c~f 하양. 가장 많이 달린 고양이가 우승 (동점이면 먼저 그 칸에 도착한 고양이)
@@ -56,7 +56,6 @@ const CATS: {
 
 /** 해시 한 글자를 읽는 시간. 64글자 경주가 약 3.5초 */
 const STEP_MS = 55;
-const RACE_MS = STEP_MS * 64;
 
 /** tied: 최고 점수가 같은 고양이들 (2마리 이상이면 사진 판정) */
 type Race = { steps: number[]; counts: number[]; max: number; winner: number; tied: number[] };
@@ -90,7 +89,7 @@ const PAYOUT = 4;
 const CAT_PICKS = CATS.map((c) => c.kind);
 
 export default function CatRacePage() {
-  const g = useBlockBetting({ game: "cat-race", picks: CAT_PICKS, revealMs: RACE_MS });
+  const g = useBlockBetting({ game: "cat-race", picks: CAT_PICKS });
   const { latest, history, betClosed, betRemain, blockRemain, mode, amount } = g;
   // 고른 고양이 (CATS 의 순서)
   const pick = g.pick === null ? null : CAT_PICKS.indexOf(g.pick as CatKind);
@@ -216,7 +215,7 @@ export default function CatRacePage() {
 
           </BetSheet>
 
-          <MyBets rows={g.rows} refreshKey={g.pointsVersion} />
+          <WalletCard />
         </aside>
 
         {/* 지난 경주 */}
@@ -272,53 +271,6 @@ export default function CatRacePage() {
   );
 }
 
-/** 내 자산 카드 안의 배팅 기록 줄들 (서버 배팅 기록) */
-function MyBets({ rows, refreshKey }: { rows: BetRow[]; refreshKey: number }) {
-  return (
-    <WalletCard empty={rows.length === 0} refreshKey={refreshKey}>
-      {rows.slice(0, MY_BETS_SHOWN).map((row) => {
-        const { bet } = row;
-        const pick = CAT_PICKS.indexOf(bet.pick as CatKind);
-        // 경주를 기다리는 배팅
-        if (!row.revealed || !row.hash) {
-          return (
-            <li key={bet.id} className="animate-pop flex items-center gap-2 rounded-lg bg-eth/10 px-3 py-2 text-sm text-eth">
-              <span className="w-24 shrink-0 text-xs font-semibold tabular-nums">🔒 #{bet.targetBlockNumber?.toLocaleString()}</span>
-              <CatHead cat={CATS[pick].kind} className="h-6 w-6" />
-              <span className="text-xs font-bold tabular-nums">{Number(bet.amount).toLocaleString()} 코인</span>
-              <span className="ml-auto animate-pulse text-xs font-semibold">경주 기다리는 중</span>
-            </li>
-          );
-        }
-        const { winner } = runRace(row.hash);
-        const win = winner === pick;
-        const profit = profitOf(row, win ? PAYOUT : 0);
-        return (
-          <li
-            key={bet.id}
-            className={`animate-pop flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${win ? "bg-sky-50" : "bg-foreground/[0.03]"}`}
-          >
-            <a
-              href={blockUrl(bet.targetBlockNumber!)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-24 shrink-0 text-xs tabular-nums text-blue-600 hover:underline"
-            >
-              #{bet.targetBlockNumber!.toLocaleString()}
-            </a>
-            <CatHead cat={CATS[pick].kind} className="h-6 w-6" />
-            <span className="text-xs text-foreground/40">→ 🏆</span>
-            <CatHead cat={CATS[winner].kind} className="h-6 w-6" />
-            <span className={`ml-auto text-xs font-bold tabular-nums ${win ? "text-sky-600" : "text-foreground/50"}`}>
-              {win ? `🎉 +${profit.toLocaleString()}` : `😿 ${profit.toLocaleString()}`} 코인
-              {!row.settled && <span className="ml-1 font-medium text-foreground/40">정산 중</span>}
-            </span>
-          </li>
-        );
-      })}
-    </WalletCard>
-  );
-}
 
 /** 경주 트랙. 해시 글자를 하나씩 읽으며 고양이를 움직이고, 다 읽으면 우승 고양이에 왕관을 씌운다 */
 function RaceTrack({ block }: { block: Block }) {

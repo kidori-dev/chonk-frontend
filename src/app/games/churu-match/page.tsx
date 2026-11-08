@@ -6,7 +6,9 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import AccountMenu from "@/components/AccountMenu";
 import SymbolArt, { MATCH_SYMBOLS, type MatchSymbol } from "@/components/MatchSymbols";
 import { getPoints, hasTokens, placeBet } from "@/lib/api";
-import { BET_AMOUNTS } from "@/lib/betting";
+import { notifyBetsChanged } from "@/lib/autoBet";
+import { BetAmountInput } from "@/components/BetAmountPicker";
+import { DEFAULT_BET, isValidBet } from "@/lib/betting";
 
 // 츄르 그림 맞추기. 그림은 서버가 난수로 정하고(POST /api/games/churu-match/bets) 포인트도 서버에서 바로 정산된다.
 // 화면은 서버가 알려준 그림으로 릴을 멈추기만 한다
@@ -14,7 +16,6 @@ import { BET_AMOUNTS } from "@/lib/betting";
 // 토큰은 localStorage 에 있으니 클라이언트에서만 읽는다
 const subscribeNothing = () => () => {};
 
-const BETS = BET_AMOUNTS;
 /** 자동 돌리기에서 결과를 보여준 뒤 다음 판까지 쉬는 시간(ms) */
 const AUTO_PAUSE_MS = 1000;
 /** 릴이 왼쪽부터 차례로 멈추는 시각(ms) */
@@ -48,7 +49,7 @@ export default function ChuruMatchPage() {
   const loggedIn = useSyncExternalStore(subscribeNothing, hasTokens, () => false);
   // 내 포인트 (서버). 불러오기 전이면 null
   const [coins, setCoins] = useState<number | null>(null);
-  const [bet, setBet] = useState(BETS[0]);
+  const [bet, setBet] = useState(DEFAULT_BET);
   const [reels, setReels] = useState<MatchSymbol[]>(["churu", "fish", "cat"]);
   const [stopped, setStopped] = useState([true, true, true]);
   const [result, setResult] = useState<{ win: number; message: string } | null>(null);
@@ -58,7 +59,7 @@ export default function ChuruMatchPage() {
 
   const [auto, setAuto] = useState(false);
   const spinning = stopped.some((s) => !s);
-  const enough = coins !== null && coins >= bet;
+  const enough = isValidBet(bet) && coins !== null && coins >= bet;
   // 자동 돌리기가 켜져 있어도 포인트가 모자라면 멈춘다
   const autoBlocked = auto && !spinning && coins !== null && !enough;
 
@@ -106,6 +107,7 @@ export default function ChuruMatchPage() {
       return;
     }
 
+    notifyBetsChanged(); // 내 자산 카드(모든 페이지 공유)가 기록을 다시 불러온다
     const final = res.bet.result!.split(",") as MatchSymbol[];
     timers.current.push(
       ...STOP_AT.map((ms, i) =>
@@ -181,19 +183,8 @@ export default function ChuruMatchPage() {
             </p>
 
             {/* 배팅 금액 */}
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {BETS.map((b) => (
-                <button
-                  key={b}
-                  onClick={() => setBet(b)}
-                  disabled={spinning || auto}
-                  className={`rounded-md py-2 text-sm font-bold transition disabled:cursor-not-allowed ${
-                    bet === b ? "bg-primary text-white" : "bg-primary/10 text-primary hover:bg-primary/20"
-                  }`}
-                >
-                  {b} 코인
-                </button>
-              ))}
+            <div className="mt-4">
+              <BetAmountInput amount={bet} disabled={spinning || auto} onChange={setBet} />
             </div>
 
             {loggedIn ? (
