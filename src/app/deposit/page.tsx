@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import AccountMenu from "@/components/AccountMenu";
+import CoinIcon from "@/components/CoinIcon";
 import QrCode from "@/components/QrCode";
 import {
   ApiError,
@@ -127,7 +128,10 @@ export default function DepositPage() {
               <ul className="mt-3 divide-y divide-foreground/10">
                 {info.currencies.map((c) => (
                   <li key={c.address} className="flex items-center gap-3 py-2.5 text-sm">
-                    <b className="w-16 shrink-0">{c.symbol}</b>
+                    <span className="flex w-24 shrink-0 items-center gap-2">
+                      <CoinIcon symbol={c.symbol} />
+                      <b>{c.symbol}</b>
+                    </span>
                     <a
                       href={addressUrl(c.address)}
                       target="_blank"
