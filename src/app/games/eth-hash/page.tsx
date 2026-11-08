@@ -12,6 +12,7 @@ import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
 import { BET_AHEAD, blockUrl } from "@/lib/betting";
 import { useBlockBetting } from "@/lib/useBlockBetting";
+import { useMatchHeight } from "@/lib/useMatchHeight";
 
 // 블록 해시의 마지막 글자(16진수)가 홀수면 동전 앞면, 짝수면 뒷면
 type Side = "odd" | "even";
@@ -39,6 +40,8 @@ const PAYOUT = 2;
 
 export default function EthHashGamePage() {
   const g = useBlockBetting({ game: "coin", picks: ["odd", "even"] });
+  // 지난 라운드 목록을 오른쪽 칸 높이까지만 보여주고 나머지는 스크롤
+  const { asideRef, listRef, listStyle } = useMatchHeight(g.history.length > 0);
   const { blocks, latest, history, betClosed, betRemain, mode, amount } = g;
   const pick = g.pick as Side | null;
   const remain = g.blockRemain;
@@ -66,7 +69,7 @@ export default function EthHashGamePage() {
 
       {/* 넓은 화면: 왼쪽 블록 / 오른쪽 배팅·자산. 좁은 화면: 블록 → 배팅·자산 → 기록 순으로 세로 */}
       {/* 모바일에서는 배팅 카드가 화면 아래에 떠 있으므로 그만큼 아래 여백을 둔다 */}
-      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-6 pb-88 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-6">
+      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-6 pb-88 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_1fr] lg:pb-6">
         {/* 최신 블록 */}
         <section className="overflow-hidden rounded-xl lg:col-start-1 border border-foreground/10 bg-white shadow-sm">
           {latest ? <LatestBlock key={latest.hash} block={latest} /> : <p className="py-24 text-center text-foreground/50">블록 불러오는 중...</p>}
@@ -83,7 +86,7 @@ export default function EthHashGamePage() {
         </section>
 
         {/* 오른쪽: 배팅 + 내 자산(배팅 기록 포함) */}
-        <aside className="lg:sticky lg:space-y-4 lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
+        <aside ref={asideRef} className="lg:sticky lg:space-y-4 lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
           {/* 배팅: 모바일은 화면 아래 고정, 넓은 화면은 오른쪽 카드 */}
           <BetSheet title="동전 앞뒤 맞히기" betClosed={betClosed} betRemain={betRemain}>
             {/* 앞면/뒷면 선택. 지금 블록이 N 이면 N+2 블록에 건다 */}
@@ -196,7 +199,7 @@ export default function EthHashGamePage() {
           {history.length > 0 && (
             <section className="space-y-3">
               <h2 className="font-semibold">지난 라운드</h2>
-              <ul className="divide-y divide-foreground/10 rounded-lg border border-foreground/10 bg-white">
+              <ul ref={listRef} style={listStyle} className="scroll-pretty divide-y divide-foreground/10 rounded-lg border border-foreground/10 bg-white lg:overflow-y-auto">
                 {history.map((b) => {
                   const side = sideOf(b.hash);
                   return (

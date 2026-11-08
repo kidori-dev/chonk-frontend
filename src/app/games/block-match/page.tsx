@@ -12,6 +12,7 @@ import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
 import { BET_AHEAD, blockUrl } from "@/lib/betting";
 import { useBlockBetting } from "@/lib/useBlockBetting";
+import { useMatchHeight } from "@/lib/useMatchHeight";
 
 // 이더리움 블록 그림 맞추기. 블록 해시 마지막 3글자가 릴 3개의 그림이 된다
 // 0~3 츄르, 4~7 생선, 8~b 고양이, c~f 쥐. 해시만 있으면 누구나 결과를 다시 계산할 수 있다
@@ -48,6 +49,8 @@ function spinOf(hash: string): Spin {
 
 export default function BlockMatchPage() {
   const g = useBlockBetting({ game: "block-match", picks: null });
+  // 지난 라운드 목록을 오른쪽 칸 높이까지만 보여주고 나머지는 스크롤
+  const { asideRef, listRef, listStyle } = useMatchHeight();
   const { latest, history, betClosed, betRemain, blockRemain, amount } = g;
   // 매 라운드 자동 참여 (= 같은 금액으로 자동 배팅)
   const auto = g.mode === "fixed";
@@ -78,7 +81,7 @@ export default function BlockMatchPage() {
       </header>
 
       {/* 모바일에서는 배팅 카드가 화면 아래에 떠 있으므로 그만큼 아래 여백을 둔다 */}
-      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-6 pb-80 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-6">
+      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-6 pb-80 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_1fr] lg:pb-6">
         {/* 릴 */}
         <section className="overflow-hidden rounded-xl border border-foreground/10 bg-white shadow-sm lg:col-start-1">
           {latest ? (
@@ -97,7 +100,7 @@ export default function BlockMatchPage() {
         </section>
 
         {/* 오른쪽: 배팅(모바일은 화면 아래 고정) + 내 자산 */}
-        <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:space-y-4 lg:self-start">
+        <aside ref={asideRef} className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:space-y-4 lg:self-start">
           <BetSheet title="그림 맞추기 참여" betClosed={betClosed} betRemain={betRemain}>
             <p className="mt-1 text-sm text-foreground/60">
               {latest && <b className="text-eth">#{(latest.number + BET_AHEAD).toLocaleString()}</b>} 블록 해시 마지막
@@ -172,7 +175,7 @@ export default function BlockMatchPage() {
           <section className="space-y-3">
             <h2 className="font-semibold">지난 라운드</h2>
             <p className="text-xs text-foreground/50">판정 블록 뒤로 2블록이 더 나오면 결과가 확정돼요</p>
-            <ul className="divide-y divide-foreground/10 rounded-lg border border-foreground/10 bg-white">
+            <ul ref={listRef} style={listStyle} className="scroll-pretty divide-y divide-foreground/10 rounded-lg border border-foreground/10 bg-white lg:overflow-y-auto">
               {history.map((b) => {
                 const spin = spinOf(b.hash);
                 return (

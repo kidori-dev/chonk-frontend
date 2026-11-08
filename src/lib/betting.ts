@@ -21,8 +21,8 @@ export function isValidBet(amount: number): boolean {
   return Number.isSafeInteger(amount) && amount >= 1;
 }
 
-/** 내 자산 카드에 보여줄 배팅 기록 줄 수 (모든 게임, 결과 기다리는 줄 포함) */
-export const MY_BETS_SHOWN = 8;
+/** 내 자산 카드에 불러오는 배팅 기록 줄 수 (모든 게임, 결과 기다리는 줄 포함). 8줄 높이 넘으면 카드 안에서 스크롤 */
+export const MY_BETS_SHOWN = 16;
 
 /** 서버에서 불러오는 배팅 기록 수 */
 export const MY_BETS_SIZE = 20;

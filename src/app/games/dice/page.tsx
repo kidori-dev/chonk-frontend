@@ -13,6 +13,7 @@ import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
 import { BET_AHEAD, blockUrl } from "@/lib/betting";
 import { useBlockBetting } from "@/lib/useBlockBetting";
+import { useMatchHeight } from "@/lib/useMatchHeight";
 
 // 이더리움 블록 주사위. 블록 해시로 주사위 2개를 굴려 두 눈의 합에 건다
 // 해시 끝에서부터 1바이트(2글자)씩 읽어 252 이상은 건너뛰고 6으로 나눈 나머지 + 1 → 1~6 이 똑같은 확률로 나온다
@@ -48,6 +49,8 @@ const DICE_PICKS: string[] = PICKS.map((p) => p.key);
 
 export default function DicePage() {
   const g = useBlockBetting({ game: "dice", picks: DICE_PICKS });
+  // 지난 라운드 목록을 오른쪽 칸 높이까지만 보여주고 나머지는 스크롤
+  const { asideRef, listRef, listStyle } = useMatchHeight();
   const { latest, history, betClosed, betRemain, blockRemain, mode, amount } = g;
   // 고른 것 (PICKS 의 순서)
   const pick = g.pick === null ? null : DICE_PICKS.indexOf(g.pick);
@@ -76,7 +79,7 @@ export default function DicePage() {
       </header>
 
       {/* 모바일에서는 배팅 카드가 화면 아래에 떠 있으므로 그만큼 아래 여백을 둔다 */}
-      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-6 pb-96 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-6">
+      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-6 pb-96 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_1fr] lg:pb-6">
         {/* 주사위 */}
         <section className="overflow-hidden rounded-xl border border-foreground/10 bg-white shadow-sm lg:col-start-1">
           {latest ? (
@@ -95,7 +98,7 @@ export default function DicePage() {
         </section>
 
         {/* 오른쪽: 배팅(모바일은 화면 아래 고정) + 내 자산 */}
-        <aside className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:space-y-4 lg:self-start">
+        <aside ref={asideRef} className="lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:space-y-4 lg:self-start">
           <BetSheet title="주사위 합 맞히기" betClosed={betClosed} betRemain={betRemain}>
             <p className="mt-1 mb-3 text-sm text-foreground/60">
               {latest && <b className="text-eth">#{(latest.number + BET_AHEAD).toLocaleString()}</b>} 블록 주사위 2개의
@@ -186,7 +189,7 @@ export default function DicePage() {
               ))}
             </div>
           </div>
-          <ul className="divide-y divide-foreground/10 rounded-lg border border-foreground/10 bg-white">
+          <ul ref={listRef} style={listStyle} className="scroll-pretty divide-y divide-foreground/10 rounded-lg border border-foreground/10 bg-white lg:overflow-y-auto">
             {history.map((b) => {
               const roll = rollOf(b.hash);
               const p = PICKS[roll.pick];

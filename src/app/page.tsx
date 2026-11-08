@@ -3,13 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import AccountMenu from "@/components/AccountMenu";
 import CatHead from "@/components/CatHead";
 import ChuruIcon from "@/components/ChuruIcon";
 import Die from "@/components/Die";
 import SymbolArt from "@/components/MatchSymbols";
+import WalletCard from "@/components/WalletCard";
 import { ApiError, feedChuru, getPoints, hasTokens } from "@/lib/api";
 import { MARKETS, type Market } from "@/lib/markets";
 
@@ -26,6 +27,25 @@ export default function LandingPage() {
   const [message, setMessage] = useState<Dialog | null>(null);
   // 로그인했으면 상단 버튼에 내 포인트를 보여준다
   const [points, setPoints] = useState<string | null>(null);
+  // 오른쪽 내 자산 카드 높이 = 왼쪽 게임 카드 3줄 높이 (줄이 더 많아도 3줄까지만)
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [asideHeight, setAsideHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const measure = () => {
+      const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").length;
+      const last = grid.children[Math.min(grid.children.length, cols * 3) - 1];
+      if (!last) return;
+      // 카드가 몇 개 안 될 때(검색) 너무 납작해지지 않게 최소 높이
+      setAsideHeight(Math.max(380, last.getBoundingClientRect().bottom - grid.getBoundingClientRect().top));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [query]);
 
   useEffect(() => {
     if (!loggedIn) return;
@@ -92,16 +112,20 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-6">
+      {/* 넓은 화면: 왼쪽 게임 카드, 오른쪽 내 자산(모든 게임 공유). 모바일은 '내 배팅' 버튼으로 연다 */}
+      <main className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
         {markets.length === 0 ? (
           <p className="py-20 text-center text-sm text-foreground/60">검색 결과가 없습니다</p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div ref={gridRef} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {markets.map((m) => (
               <MarketCard key={m.id} market={m} onMessage={setMessage} onBuy={buy} />
             ))}
           </div>
         )}
+        <aside className="sticky top-20 hidden lg:block" style={asideHeight ? { height: asideHeight } : undefined}>
+          <WalletCard fill />
+        </aside>
       </main>
 
       {/* 메인 캐릭터는 창 오른쪽 아래에 항상 떠 있다 */}

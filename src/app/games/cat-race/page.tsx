@@ -13,6 +13,7 @@ import WalletCard from "@/components/WalletCard";
 import type { Block } from "@/lib/api";
 import { BET_AHEAD, blockUrl } from "@/lib/betting";
 import { useBlockBetting } from "@/lib/useBlockBetting";
+import { useMatchHeight } from "@/lib/useMatchHeight";
 
 // 고양이 경주. 블록 해시 64글자를 앞에서부터 읽으며 글자마다 해당 고양이가 한 칸씩 달린다
 // 0~3 치즈, 4~7 까망, 8~b 삼색이, c~f 하양. 가장 많이 달린 고양이가 우승 (동점이면 먼저 그 칸에 도착한 고양이)
@@ -90,6 +91,8 @@ const CAT_PICKS = CATS.map((c) => c.kind);
 
 export default function CatRacePage() {
   const g = useBlockBetting({ game: "cat-race", picks: CAT_PICKS });
+  // 지난 라운드 목록을 오른쪽 칸 높이까지만 보여주고 나머지는 스크롤
+  const { asideRef, listRef, listStyle } = useMatchHeight();
   const { latest, history, betClosed, betRemain, blockRemain, mode, amount } = g;
   // 고른 고양이 (CATS 의 순서)
   const pick = g.pick === null ? null : CAT_PICKS.indexOf(g.pick as CatKind);
@@ -118,7 +121,7 @@ export default function CatRacePage() {
       </header>
 
       {/* 모바일에서는 배팅 카드가 화면 아래에 떠 있으므로 그만큼 아래 여백을 둔다 */}
-      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-6 pb-96 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-6">
+      <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-6 pb-96 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_1fr] lg:pb-6">
         {/* 경주 트랙 */}
         <section className="overflow-hidden rounded-xl border border-foreground/10 bg-white shadow-sm lg:col-start-1">
           {latest ? (
@@ -137,7 +140,7 @@ export default function CatRacePage() {
         </section>
 
         {/* 오른쪽: 배팅(모바일은 화면 아래 고정) + 내 자산 */}
-        <aside className="lg:sticky lg:space-y-4 lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
+        <aside ref={asideRef} className="lg:sticky lg:space-y-4 lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
           <BetSheet title="우승 고양이 맞히기" betClosed={betClosed} betRemain={betRemain}>
             <p className="mt-1 mb-3 text-sm text-foreground/60">
               {latest && <b className="text-eth">#{(latest.number + BET_AHEAD).toLocaleString()}</b>} 블록 경주 1등은?
@@ -231,7 +234,7 @@ export default function CatRacePage() {
               ))}
             </div>
           </div>
-          <ul className="divide-y divide-foreground/10 rounded-lg border border-foreground/10 bg-white">
+          <ul ref={listRef} style={listStyle} className="scroll-pretty divide-y divide-foreground/10 rounded-lg border border-foreground/10 bg-white lg:overflow-y-auto">
             {history.map((b) => {
               const race = runRace(b.hash);
               return (

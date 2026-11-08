@@ -15,9 +15,10 @@ const subscribeNothing = () => () => {};
 /**
  * 내 자산 카드. 모든 게임이 같이 쓴다 (게임 화면 오른쪽 + 모든 페이지에 떠 있는 '내 배팅' 패널).
  * 보유 포인트, 켜 둔 자동배팅(여기서 끌 수 있다), 모든 게임의 최근 배팅 기록을 보여준다.
- * 새 블록이 나올 때(정산 반영)와 배팅이 새로 걸릴 때 다시 불러온다
+ * 새 블록이 나올 때(정산 반영)와 배팅이 새로 걸릴 때 다시 불러온다.
+ * fill: 부모 높이를 꽉 채우고 배팅 기록이 남는 높이만큼 늘어난다 (마켓 오른쪽 칸). 아니면 기록은 8줄 높이까지
  */
-export default function WalletCard({ className = "" }: { className?: string }) {
+export default function WalletCard({ className = "", fill = false }: { className?: string; fill?: boolean }) {
   const loggedIn = useSyncExternalStore(subscribeNothing, hasTokens, () => false);
   const { autos, notices, version } = useSyncExternalStore(subscribeAutoBets, getAutoBets, getServerAutoBets);
   const [points, setPoints] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export default function WalletCard({ className = "" }: { className?: string }) {
   const noticeList = Object.entries(notices) as [GameId, string][];
 
   return (
-    <section className={`rounded-xl border border-foreground/10 bg-white p-5 shadow-sm ${className}`}>
+    <section className={`rounded-xl border border-foreground/10 bg-white p-5 shadow-sm ${fill ? "flex h-full flex-col" : ""} ${className}`}>
       <h2 className="font-semibold">내 자산</h2>
       {!loggedIn ? (
         <div className="mt-3 space-y-3">
@@ -98,7 +99,8 @@ export default function WalletCard({ className = "" }: { className?: string }) {
           {bets.length === 0 ? (
             <p className="mt-3 text-center text-sm text-foreground/50">아직 배팅 기록이 없어요</p>
           ) : (
-            <ul className="mt-2 space-y-1.5">
+            // 넘치면 카드 안에서 스크롤 (fill 이 아니면 8줄 정도 높이까지)
+            <ul className={`-mr-2 mt-2 space-y-1.5 overflow-y-auto pr-2 scroll-pretty ${fill ? "min-h-0 flex-1" : "max-h-[23rem]"}`}>
               {bets.map((bet) => (
                 <BetLine key={bet.id} bet={bet} />
               ))}
@@ -130,9 +132,10 @@ function BetLine({ bet }: { bet: Bet }) {
       </a>
     );
   const what = (
-    <Link href={info.href} className="min-w-0 truncate text-xs hover:underline">
-      <b>{info.title}</b>
-      {pick && <span className="ml-1 rounded bg-primary px-1 py-0.5 text-[11px] font-bold text-white">{pick}</span>}
+    // 좁으면 게임 이름만 줄이고 고른 값은 그대로 보인다
+    <Link href={info.href} className="flex min-w-0 items-center gap-1 text-xs hover:underline">
+      <b className="truncate">{info.title}</b>
+      {pick && <span className="shrink-0 rounded bg-primary px-1 py-0.5 text-[11px] font-bold text-white">{pick}</span>}
     </Link>
   );
 
@@ -142,7 +145,9 @@ function BetLine({ bet }: { bet: Bet }) {
       <li className="animate-pop flex items-center gap-2 rounded-lg bg-eth/10 px-3 py-2 text-eth">
         {block}
         {what}
-        <span className="ml-auto shrink-0 animate-pulse text-xs font-semibold">{amount.toLocaleString()} 코인 · 기다리는 중</span>
+        <span className="ml-auto shrink-0 animate-pulse text-xs font-semibold" title="결과 기다리는 중">
+          ⏳ {amount.toLocaleString()}
+        </span>
       </li>
     );
   }
