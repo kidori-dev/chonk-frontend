@@ -4,15 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { getMe, hasTokens, logout, type User } from "@/lib/api";
+import { getMe, hasTokens, subscribeAuth, logout, type User } from "@/lib/api";
 
-// 토큰은 localStorage 에 있으니 클라이언트에서만 읽는다
-const subscribeNothing = () => () => {};
 
 /** 화면 오른쪽 위 계정 메뉴. 로그인했으면 내 이메일(누르면 메뉴), 아니면 로그인 / 회원가입 버튼 */
 export default function AccountMenu() {
   const router = useRouter();
-  const loggedIn = useSyncExternalStore(subscribeNothing, hasTokens, () => false);
+  const loggedIn = useSyncExternalStore(subscribeAuth, hasTokens, () => false);
   const [user, setUser] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);

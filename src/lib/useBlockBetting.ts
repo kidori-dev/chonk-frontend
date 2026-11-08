@@ -6,6 +6,7 @@ import {
   BLOCK_INTERVAL_MS,
   getMyBets,
   hasTokens,
+  subscribeAuth,
   placeBet,
   type Bet,
   type Block,
@@ -29,8 +30,6 @@ import { serverNow, subscribeBlocks, subscribeRounds, type BlocksEvent } from "@
 /** 게임 히스토리에 남겨 두는 라운드 수 */
 const ROUNDS_SIZE = 20;
 
-// 토큰은 localStorage 에 있으니 클라이언트에서만 읽는다
-const subscribeNothing = () => () => {};
 
 /**
  * 블록 게임(동전, 고양이 경주, 그림 맞추기, 주사위)이 같이 쓰는 배팅 흐름.
@@ -46,7 +45,7 @@ const subscribeNothing = () => () => {};
  * picks: 고를 수 있는 값 (서버 pick 값). null 이면 고르는 것 없이 금액만 건다
  */
 export function useBlockBetting({ game, picks }: { game: GameId; picks: readonly string[] | null }) {
-  const loggedIn = useSyncExternalStore(subscribeNothing, hasTokens, () => false);
+  const loggedIn = useSyncExternalStore(subscribeAuth, hasTokens, () => false);
   const [blocks, setBlocks] = useState<Block[]>([]); // 최신이 앞
   const [round, setRound] = useState<BlocksEvent["round"]>(null);
   // 확정된 라운드 결과 (최신이 앞)

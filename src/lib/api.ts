@@ -42,6 +42,24 @@ function loadTokens(): Tokens | null {
 function saveTokens(tokens: Tokens | null): void {
   if (tokens) localStorage.setItem(TOKENS_KEY, JSON.stringify(tokens));
   else localStorage.removeItem(TOKENS_KEY);
+  notifyAuth();
+}
+
+// 로그인/로그아웃(토큰 만료 포함)을 화면에 알린다. useSyncExternalStore(subscribeAuth, hasTokens) 로 쓴다
+const AUTH_EVENT = "chonk-auth";
+
+function notifyAuth(): void {
+  window.dispatchEvent(new Event(AUTH_EVENT));
+}
+
+/** 로그인 상태가 바뀌면 callback 을 부른다 (다른 탭에서 바뀐 것도) */
+export function subscribeAuth(callback: () => void): () => void {
+  window.addEventListener(AUTH_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(AUTH_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
 }
 
 // ---- 데모 로그인 ----
@@ -61,6 +79,7 @@ function isDemo(): boolean {
 export function loginDemo(): User {
   saveTokens(null);
   localStorage.setItem(DEMO_KEY, "1");
+  notifyAuth();
   return DEMO_USER;
 }
 

@@ -5,19 +5,23 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import AccountMenu from "@/components/AccountMenu";
 import SymbolArt, { MATCH_SYMBOLS, type MatchSymbol } from "@/components/MatchSymbols";
-import { getPoints, hasTokens, placeBet } from "@/lib/api";
-import { notifyBetsChanged } from "@/lib/autoBet";
+import { getPoints, hasTokens, subscribeAuth, placeBet } from "@/lib/api";
+import {
+  clearNotice,
+  getAutoBets,
+  getServerAutoBets,
+  notifyBetsChanged,
+  onChuruRound,
+  startAuto,
+  stopAuto,
+  subscribeAutoBets,
+} from "@/lib/autoBet";
 import { BetAmountInput } from "@/components/BetAmountPicker";
 import { DEFAULT_BET, isValidBet } from "@/lib/betting";
 
 // 츄르 그림 맞추기. 그림은 서버가 난수로 정하고(POST /api/games/churu-match/bets) 포인트도 서버에서 바로 정산된다.
 // 화면은 서버가 알려준 그림으로 릴을 멈추기만 한다
 
-// 토큰은 localStorage 에 있으니 클라이언트에서만 읽는다
-const subscribeNothing = () => () => {};
-
-/** 자동 돌리기에서 결과를 보여준 뒤 다음 판까지 쉬는 시간(ms) */
-const AUTO_PAUSE_MS = 1000;
 /** 릴이 왼쪽부터 차례로 멈추는 시각(ms) */
 const STOP_AT = [900, 1400, 1900];
 
@@ -46,7 +50,7 @@ function judge(reels: MatchSymbol[]): { times: number; message: string } {
 }
 
 export default function ChuruMatchPage() {
-  const loggedIn = useSyncExternalStore(subscribeNothing, hasTokens, () => false);
+  const loggedIn = useSyncExternalStore(subscribeAuth, hasTokens, () => false);
   // 내 포인트 (서버). 불러오기 전이면 null
   const [coins, setCoins] = useState<number | null>(null);
   const [bet, setBet] = useState(DEFAULT_BET);
@@ -57,11 +61,13 @@ export default function ChuruMatchPage() {
   const [round, setRound] = useState(0); // 멈출 때 애니메이션을 다시 걸기 위한 번호
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const [auto, setAuto] = useState(false);
+  // 자동 돌리기는 전역(lib/autoBet)에서 돌아서 다른 페이지로 가도 계속 돌고, 내 자산 카드에서도 끌 수 있다
+  const { autos, notices } = useSyncExternalStore(subscribeAutoBets, getAutoBets, getServerAutoBets);
+  const autoBet = autos["churu-match"];
+  const auto = !!autoBet;
+  const amount = autoBet?.amount ?? bet;
   const spinning = stopped.some((s) => !s);
-  const enough = isValidBet(bet) && coins !== null && coins >= bet;
-  // 자동 돌리기가 켜져 있어도 포인트가 모자라면 멈춘다
-  const autoBlocked = auto && !spinning && coins !== null && !enough;
+  const enough = isValidBet(amount) && coins !== null && coins >= amount;
 
   useEffect(() => {
     if (!loggedIn) return;
@@ -71,19 +77,33 @@ export default function ChuruMatchPage() {
   }, [loggedIn]);
 
   // 화면을 떠나면 돌던 타이머 정리
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  // (다시 돌아왔을 때 릴이 도는 중으로 멈춰 있지 않게 멈춘 상태로 둔다)
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout);
+      setStopped([true, true, true]);
+    },
+    [],
+  );
 
-  useEffect(() => {
-    if (!auto || spinning || !enough) return;
-    const timer = setTimeout(spin, AUTO_PAUSE_MS);
-    return () => clearTimeout(timer);
-  });
+  function toggleAuto() {
+    if (auto) stopAuto("churu-match");
+    else startAuto({ game: "churu-match", mode: "fixed", pick: null, picks: null, amount: bet });
+  }
 
-  async function spin() {
+  function spin() {
     if (spinning || !enough) return;
+    const round = placeBet("churu-match", { amount: bet });
+    round.then(notifyBetsChanged, () => {}); // 내 자산 카드(모든 페이지 공유)가 기록을 다시 불러온다
+    animate(round, bet);
+  }
+
+  /** 서버 결과(round)가 올 때까지 릴을 돌리다가 왼쪽부터 결과 그림으로 멈춘다 */
+  async function animate(round: ReturnType<typeof placeBet>, cost: number) {
+    timers.current.forEach(clearTimeout);
     const done = [false, false, false];
 
-    setCoins((c) => (c === null ? c : c - bet));
+    setCoins((c) => (c === null ? c : c - cost));
     setResult(null);
     setError(null);
     setStopped([false, false, false]);
@@ -93,13 +113,12 @@ export default function ChuruMatchPage() {
     const roll = setInterval(() => setReels((prev) => prev.map((s, i) => (done[i] ? s : randomSymbol()))), 70);
     timers.current = [roll];
 
-    let res: Awaited<ReturnType<typeof placeBet>>;
+    let res: Awaited<typeof round>;
     try {
-      res = await placeBet("churu-match", { amount: bet });
+      res = await round;
     } catch (err) {
       clearInterval(roll);
       setStopped([true, true, true]);
-      setAuto(false);
       setError(err instanceof Error ? err.message : "돌리지 못했어요");
       getPoints()
         .then((p) => setCoins(Number(p.points)))
@@ -107,7 +126,6 @@ export default function ChuruMatchPage() {
       return;
     }
 
-    notifyBetsChanged(); // 내 자산 카드(모든 페이지 공유)가 기록을 다시 불러온다
     const final = res.bet.result!.split(",") as MatchSymbol[];
     timers.current.push(
       ...STOP_AT.map((ms, i) =>
@@ -124,6 +142,9 @@ export default function ChuruMatchPage() {
       ),
     );
   }
+
+  // 자동 돌리기가 한 판 돌릴 때마다 릴을 돌린다 (화면을 보고 있을 때만)
+  useEffect(() => onChuruRound((round) => animate(round, autos["churu-match"]?.amount ?? 0)));
 
   return (
     <div className="flex flex-1 flex-col">
@@ -184,7 +205,7 @@ export default function ChuruMatchPage() {
 
             {/* 배팅 금액 */}
             <div className="mt-4">
-              <BetAmountInput amount={bet} disabled={spinning || auto} onChange={setBet} />
+              <BetAmountInput amount={amount} disabled={spinning || auto} onChange={setBet} />
             </div>
 
             {loggedIn ? (
@@ -199,15 +220,21 @@ export default function ChuruMatchPage() {
 
                 {/* 자동 돌리기: 켜 두면 같은 금액으로 계속 돌린다 */}
                 <button
-                  onClick={() => setAuto((a) => !a)}
-                  className={`mt-2 w-full rounded-md py-2.5 text-sm font-bold transition ${
+                  onClick={toggleAuto}
+                  disabled={!auto && !enough}
+                  className={`mt-2 w-full rounded-md py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${
                     auto ? "bg-eth text-white" : "bg-foreground/5 text-foreground/60 hover:text-foreground"
                   }`}
                 >
                   {auto ? "🔁 자동 돌리기 끄기" : "🔁 자동 돌리기"}
                 </button>
-                {autoBlocked && (
-                  <p className="mt-2 text-center text-xs text-red-500">포인트가 모자라서 자동 돌리기를 멈췄어요</p>
+                {notices["churu-match"] && (
+                  <p className="mt-2 flex items-center justify-center gap-1 text-center text-xs text-red-500">
+                    {notices["churu-match"]}
+                    <button onClick={() => clearNotice("churu-match")} aria-label="알림 지우기" className="px-1">
+                      ✕
+                    </button>
+                  </p>
                 )}
               </>
             ) : (

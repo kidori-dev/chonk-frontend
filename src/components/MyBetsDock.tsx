@@ -4,11 +4,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import WalletCard from "@/components/WalletCard";
-import { hasTokens } from "@/lib/api";
+import { hasTokens, subscribeAuth } from "@/lib/api";
 import { getAutoBets, getServerAutoBets, subscribeAutoBets } from "@/lib/autoBet";
 
-// 토큰은 localStorage 에 있으니 클라이언트에서만 읽는다
-const subscribeNothing = () => () => {};
 
 /** 넓은 화면에서 오른쪽에 내 자산 카드가 이미 있는 페이지 (마켓 + 블록 게임). 여기서는 넓은 화면에서 이 버튼을 숨긴다 */
 const PAGES_WITH_CARD = ["/", ...["eth-hash", "cat-race", "block-match", "dice", "ladder", "lottery"].map((g) => `/games/${g}`)];
@@ -19,7 +17,7 @@ const PAGES_WITH_CARD = ["/", ...["eth-hash", "cat-race", "block-match", "dice",
  * 모바일은 오른쪽 위(게임 화면 배팅 카드가 아래에 떠 있어서), 넓은 화면은 오른쪽 아래
  */
 export default function MyBetsDock() {
-  const loggedIn = useSyncExternalStore(subscribeNothing, hasTokens, () => false);
+  const loggedIn = useSyncExternalStore(subscribeAuth, hasTokens, () => false);
   const { autos, notices } = useSyncExternalStore(subscribeAutoBets, getAutoBets, getServerAutoBets);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);

@@ -11,17 +11,18 @@ import ChuruIcon from "@/components/ChuruIcon";
 import Die from "@/components/Die";
 import SymbolArt from "@/components/MatchSymbols";
 import WalletCard from "@/components/WalletCard";
-import { ApiError, feedChuru, getPoints, hasTokens } from "@/lib/api";
+import { ApiError, feedChuru, getPoints, hasTokens, subscribeAuth } from "@/lib/api";
+import { notifyBetsChanged } from "@/lib/autoBet";
 import { MARKETS, type Market } from "@/lib/markets";
-
-// 토큰은 localStorage 에 있으니 클라이언트에서만 읽는다 (서버 렌더링 때는 비로그인으로 본다)
-const subscribe = () => () => {};
 
 type BuyMarket = Extract<Market, { kind: "buy" }>;
 
+// 오른쪽 아래 고양이를 누르면 쓰는 '츄르 주기' 카드 정보
+const churuMarket = MARKETS.find((m): m is BuyMarket => m.kind === "buy")!;
+
 export default function LandingPage() {
   const router = useRouter();
-  const loggedIn = useSyncExternalStore(subscribe, hasTokens, () => false);
+  const loggedIn = useSyncExternalStore(subscribeAuth, hasTokens, () => false);
   const [query, setQuery] = useState("");
   // 카드 버튼을 눌렀을 때 띄우는 메시지 (null 이면 닫힘)
   const [message, setMessage] = useState<Dialog | null>(null);
@@ -74,6 +75,7 @@ export default function LandingPage() {
         try {
           const { points: after } = await feedChuru();
           setPoints(after);
+          notifyBetsChanged(); // 내 자산 카드도 포인트를 다시 불러온다
           setMessage({ message: `${m.thanks}\n남은 포인트 ${formatPoints(after)} P`, image: "/images/cat-happy.png" });
         } catch (err) {
           if (err instanceof ApiError && err.status === 400) short();
@@ -129,7 +131,7 @@ export default function LandingPage() {
       </main>
 
       {/* 메인 캐릭터는 창 오른쪽 아래에 항상 떠 있다 */}
-      <CornerCat />
+      <CornerCat onClick={loggedIn ? () => buy(churuMarket) : undefined} />
 
       <footer className="mt-auto border-t border-foreground/10">
         <div className="mx-auto max-w-7xl px-4 py-6 text-sm text-foreground/60">© 2026 Chonk. All rights reserved.</div>
@@ -192,16 +194,26 @@ function MessageModal({ dialog, onClose }: { dialog: Dialog; onClose: () => void
   );
 }
 
-/** 창 오른쪽 아래에 떠 있는 심술냥이 */
-function CornerCat() {
+/** 창 오른쪽 아래에 떠 있는 심술냥이. 로그인했으면 눌러서 츄르를 사 줄 수 있다 */
+function CornerCat({ onClick }: { onClick?: () => void }) {
+  const image = (
+    <Image src="/images/cat-grumpy.png" alt="" width={512} height={539} className="h-24 w-auto sm:h-36" />
+  );
+  const position = "fixed right-3 bottom-3 z-10 sm:right-6 sm:bottom-4";
+
+  // 비로그인: 그냥 그림 (누를 수 없음)
+  if (!onClick) return <div className={`pointer-events-none ${position}`}>{image}</div>;
+
   return (
-    <Image
-      src="/images/cat-grumpy.png"
-      alt="Chonk"
-      width={512}
-      height={539}
-      className="pointer-events-none fixed right-3 bottom-3 z-10 h-24 w-auto sm:right-6 sm:bottom-4 sm:h-36"
-    />
+    <button
+      type="button"
+      onClick={onClick}
+      title="Chonk 한테 츄르 주기"
+      aria-label="Chonk 한테 츄르 주기"
+      className={`cursor-pointer ${position}`}
+    >
+      {image}
+    </button>
   );
 }
 

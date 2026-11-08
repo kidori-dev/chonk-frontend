@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-import { getMyBets, getPoints, hasTokens, type Bet, type GameId } from "@/lib/api";
+import { getMyBets, getPoints, hasTokens, subscribeAuth, type Bet, type GameId } from "@/lib/api";
 import { clearNotice, getAutoBets, getServerAutoBets, stopAuto, subscribeAutoBets } from "@/lib/autoBet";
 import { MY_BETS_SHOWN, blockUrl } from "@/lib/betting";
 import { GAME_INFO, pickLabel, resultLabel } from "@/lib/games";
 import { subscribeBlocks } from "@/lib/socket";
 
-// 토큰은 localStorage 에 있으니 클라이언트에서만 읽는다
-const subscribeNothing = () => () => {};
 
 /**
  * 내 자산 카드. 모든 게임이 같이 쓴다 (게임 화면 오른쪽 + 모든 페이지에 떠 있는 '내 배팅' 패널).
@@ -19,7 +17,7 @@ const subscribeNothing = () => () => {};
  * fill: 부모 높이를 꽉 채우고 배팅 기록이 남는 높이만큼 늘어난다 (마켓 오른쪽 칸). 아니면 기록은 8줄 높이까지
  */
 export default function WalletCard({ className = "", fill = false }: { className?: string; fill?: boolean }) {
-  const loggedIn = useSyncExternalStore(subscribeNothing, hasTokens, () => false);
+  const loggedIn = useSyncExternalStore(subscribeAuth, hasTokens, () => false);
   const { autos, notices, version } = useSyncExternalStore(subscribeAutoBets, getAutoBets, getServerAutoBets);
   const [points, setPoints] = useState<string | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
@@ -68,7 +66,7 @@ export default function WalletCard({ className = "", fill = false }: { className
                     <Link href={GAME_INFO[a.game].href} className="min-w-0 flex-1 truncate">
                       <b>{GAME_INFO[a.game].title}</b>
                       <span className="ml-1.5 text-foreground/60">
-                        {a.mode === "random" ? "🎲 랜덤" : "📌 고정"}
+                        {a.game === "churu-match" ? "🔁 자동 돌리기" : a.mode === "random" ? "🎲 랜덤" : "📌 고정"}
                         {a.mode === "fixed" && a.pick !== null && ` · ${pickLabel(a.game, a.pick)}`}
                         {a.mode === "fixed" && a.picks && a.pick === null && " · 고를 값 없음"} · {a.amount.toLocaleString()} 코인
                       </span>
